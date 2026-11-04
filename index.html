@@ -1,0 +1,1159 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f4f3f8">
+<title>Baby Logboek</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700&family=Nunito:wght@400;600;700&display=swap">
+<style>
+  /* Layout: one phone-first column. Status strip, live banners, log buttons, then two tabs: Logboek (timeline per day) and Overzicht (charts + tables). Entries open in a bottom sheet. */
+  :root {
+    --bg: #f4f3f8; --surface: #ffffff; --fg: #1f1d2e; --muted: #6f6b86; --line: #e3e0ed;
+    --accent: #5b4fcf; --accent-fg: #ffffff;
+    --pamper: #b7850f; --pamper-soft: #fbefcf; --pamper2: #7a5a0c;
+    --voeding: #cf4a70; --voeding-soft: #fbe2ea;
+    --slaap: #4a5cc2; --slaap-soft: #e2e6fb;
+    --meta: #2b8a7a; --meta-soft: #dcf2ee;
+    --danger: #c2403a; --danger-soft: #fde4e2;
+    --shadow: 0 10px 30px rgba(40, 32, 80, .12);
+    --display: "Baloo 2", "Nunito", system-ui, sans-serif;
+    --body: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #16151e; --surface: #211f2d; --fg: #eceaf4; --muted: #9c98b3; --line: #2f2d3f;
+      --accent: #8f85f0; --accent-fg: #16151e;
+      --pamper: #e3b23a; --pamper-soft: #3a2f12; --pamper2: #9a7420;
+      --voeding: #f07a9c; --voeding-soft: #3d1c28;
+      --slaap: #8b9bf2; --slaap-soft: #222848;
+      --meta: #5cc9b5; --meta-soft: #173430;
+      --danger: #f08078; --danger-soft: #42201f; --shadow: 0 10px 30px rgba(0,0,0,.45);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16151e; --surface: #211f2d; --fg: #eceaf4; --muted: #9c98b3; --line: #2f2d3f;
+    --accent: #8f85f0; --accent-fg: #16151e;
+    --pamper: #e3b23a; --pamper-soft: #3a2f12; --pamper2: #9a7420;
+    --voeding: #f07a9c; --voeding-soft: #3d1c28;
+    --slaap: #8b9bf2; --slaap-soft: #222848;
+    --meta: #5cc9b5; --meta-soft: #173430;
+    --danger: #f08078; --danger-soft: #42201f; --shadow: 0 10px 30px rgba(0,0,0,.45);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.45;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 12px 120px;
+  }
+  .wrap { max-width: 520px; margin: 0 auto; display: grid; gap: 18px; }
+  h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; line-height: 1.15; }
+  button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .num { font-variant-numeric: tabular-nums; }
+  .muted { color: var(--muted); }
+  .label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+  header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+  header h1 { font-size: 30px; }
+  .hright { display: grid; justify-items: end; gap: 4px; }
+  #who { font-size: 13px; }
+  #gear { width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; }
+  #gear svg { width: 18px; height: 18px; }
+
+  .status { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .status .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
+  .status .tile strong { font-family: var(--display); font-size: 20px; }
+  .status .tile.voeding strong { color: var(--voeding); }
+  .status .tile.pamper strong { color: var(--pamper); }
+  .status .tile small { font-size: 13px; color: var(--muted); }
+  .status .tile.due { background: var(--danger-soft); border-color: var(--danger); }
+  .status .tile.due strong { color: var(--danger); }
+  .status .tile .next { font-weight: 700; font-size: 13px; color: var(--fg); }
+
+  .live { border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; display: grid; gap: 12px; }
+  .live.sleeping { background: var(--slaap-soft); }
+  .live.feeding { background: var(--voeding-soft); }
+  .live .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .live strong { font-family: var(--display); font-size: 22px; }
+  .sleeping strong { color: var(--slaap); }
+  .live .done { border-radius: 999px; padding: 10px 18px; font-weight: 700; color: #fff; }
+  .sleeping .done { background: var(--slaap); }
+  .feeding .done { background: var(--voeding); }
+  .sides { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .side { background: var(--surface); border: 2px solid var(--line); border-radius: 14px; padding: 12px; display: grid; gap: 2px; text-align: left; }
+  .side .t { font-family: var(--display); font-size: 28px; line-height: 1; color: var(--fg); }
+  .side .s { font-size: 13px; color: var(--muted); }
+  .side.on { border-color: var(--voeding); }
+  .side.on .t { color: var(--voeding); }
+  .side.on .s { color: var(--voeding); font-weight: 700; }
+  .feedctl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .feedctl button { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px; font-size: 14px; font-weight: 700; }
+  .feedctl button:disabled { opacity: .45; cursor: not-allowed; }
+  .feedconfirm { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; font-weight: 600; }
+  .feedconfirm span { flex: 1 1 100%; }
+  .feedconfirm button { border-radius: 10px; padding: 8px 14px; font-weight: 700; flex: 1; }
+  #feedconfirm-no { border: 1px solid var(--line); background: var(--surface); }
+  #feedconfirm-yes { background: var(--danger); color: #fff; }
+  .row .what { cursor: pointer; }
+  .row .what:hover b { text-decoration: underline; }
+  .editbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .editbar .linkbtn.danger { color: var(--danger); }
+
+  .quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .quick button { border-radius: 18px; padding: 18px 8px 14px; display: grid; justify-items: center; gap: 6px; font-weight: 700; font-size: 15px; transition: transform .08s ease; }
+  .quick button:active { transform: scale(.97); }
+  .quick svg { width: 34px; height: 34px; }
+  .quick .pamper { background: var(--pamper-soft); color: var(--pamper); }
+  .quick .voeding { background: var(--voeding-soft); color: var(--voeding); }
+  .quick .slaap { background: var(--slaap-soft); color: var(--slaap); }
+  .quick.small button { padding: 10px 8px; grid-auto-flow: column; align-items: center; gap: 8px; font-size: 14px; background: var(--surface); border: 1px solid var(--line); color: var(--meta); }
+  .quick.small svg { width: 20px; height: 20px; }
+  .quick button:disabled { opacity: .5; cursor: not-allowed; }
+
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .summary .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; min-width: 0; }
+  .summary .tile .big { font-family: var(--display); font-size: 26px; line-height: 1; margin: 4px 0 2px; }
+  .summary .tile small { font-size: 12px; color: var(--muted); display: block; }
+
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px; }
+  .tabs button { border-radius: 999px; padding: 10px; font-weight: 700; color: var(--muted); }
+  .tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-fg); }
+
+  .daynav { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .daynav h2 { font-size: 20px; }
+  .daynav button { width: 40px; height: 40px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-size: 20px; line-height: 1; }
+  .daynav button:disabled { opacity: .35; cursor: default; }
+  .timeline { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; margin-top: 10px; }
+  .row { display: grid; grid-template-columns: 6px 56px 1fr auto; align-items: center; gap: 10px; padding: 12px 12px 12px 0; border-top: 1px solid var(--line); min-width: 0; }
+  .row:first-child { border-top: 0; }
+  .row .bar { width: 6px; height: 100%; min-height: 36px; border-radius: 0 4px 4px 0; }
+  .row.pamper .bar { background: var(--pamper); }
+  .row.voeding .bar { background: var(--voeding); }
+  .row.slaap .bar { background: var(--slaap); }
+  .row.gewicht .bar, .row.temp .bar, .row.medicatie .bar { background: var(--meta); }
+  .row .time { font-weight: 700; }
+  .row .what { min-width: 0; }
+  .row .what b { display: block; }
+  .row .what span { font-size: 13px; color: var(--muted); display: block; overflow-wrap: anywhere; }
+  .row .del { color: var(--muted); font-size: 13px; padding: 6px 8px; border-radius: 8px; }
+  .row .del:hover { color: var(--danger); }
+  .row.confirm { background: var(--voeding-soft); }
+  .row .confirmbox { display: flex; gap: 6px; }
+  .row .confirmbox button { padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 700; }
+  .row .confirmbox .yes { background: var(--danger); color: #fff; }
+  .row .confirmbox .no { border: 1px solid var(--line); }
+  .empty { padding: 28px 16px; text-align: center; color: var(--muted); }
+  .empty b { display: block; color: var(--fg); font-family: var(--display); font-size: 18px; margin-bottom: 4px; }
+
+  /* Overzicht */
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+  .card h3 { font-size: 19px; }
+  .card .sub { font-size: 13px; color: var(--muted); margin-top: -6px; }
+  .card svg { width: 100%; height: auto; display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .tablewrap { overflow-x: auto; margin: 0 -14px; padding: 0 14px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; white-space: nowrap; }
+  th { text-align: left; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line); }
+  td { padding: 7px 8px 7px 0; border-bottom: 1px solid var(--line); }
+  td.n, th.n { text-align: right; padding-right: 0; padding-left: 8px; }
+  tr:last-child td { border-bottom: 0; }
+  td.today { font-weight: 700; }
+  .svgtxt { font-family: var(--body); font-size: 11px; fill: var(--muted); }
+  .svgval { font-family: var(--body); font-size: 11px; font-weight: 700; fill: var(--fg); }
+  .grid { stroke: var(--line); stroke-width: 1; }
+  .ref { stroke-width: 1.5; stroke-dasharray: 4 4; }
+
+  .note { font-size: 13px; color: var(--muted); padding: 10px 12px; border: 1px dashed var(--line); border-radius: 12px; }
+  .note.warn { color: var(--danger); border-color: var(--danger); }
+
+  .scrim { position: fixed; inset: 0; background: rgba(20, 16, 40, .45); z-index: 20; }
+  .sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; background: var(--surface); border-radius: 22px 22px 0 0; box-shadow: var(--shadow);
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 16px calc(20px + env(safe-area-inset-bottom, 0px)); max-height: 90vh; overflow-y: auto;
+  }
+  .sheet .inner { max-width: 520px; margin: 0 auto; display: grid; gap: 14px; }
+  .sheet h2 { font-size: 24px; }
+  .sheet h2.pamper { color: var(--pamper); } .sheet h2.voeding { color: var(--voeding); } .sheet h2.slaap { color: var(--slaap); }
+  .sheet h2.gewicht, .sheet h2.temp, .sheet h2.medicatie { color: var(--meta); }
+  .field { display: grid; gap: 6px; }
+  .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
+  .seg button { border: 1px solid var(--line); border-radius: 12px; padding: 11px 6px; font-weight: 700; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .startgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .start { border: 2px solid var(--line); border-radius: 16px; padding: 16px 10px; display: grid; gap: 4px; justify-items: center; font-weight: 700; font-size: 17px; }
+  .start small { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .start.suggest { border-color: var(--voeding); background: var(--voeding-soft); color: var(--voeding); }
+  .start.suggest small { color: var(--voeding); }
+  .linkbtn { color: var(--accent); font-weight: 700; font-size: 14px; text-decoration: underline; justify-self: start; }
+  .ml { display: flex; align-items: center; gap: 8px; }
+  .ml input { width: 100%; }
+  .ml button { border: 1px solid var(--line); border-radius: 12px; width: 48px; height: 48px; font-size: 22px; font-weight: 700; flex: none; }
+  input[type="number"], input[type="datetime-local"], input[type="date"], input[type="text"] {
+    font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 11px 12px; width: 100%; min-width: 0;
+  }
+  .check { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+  .check input { width: 22px; height: 22px; accent-color: var(--accent); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button { border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 14px; font-weight: 600; }
+  .actions { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-top: 4px; }
+  .actions .cancel { border: 1px solid var(--line); border-radius: 14px; padding: 14px; font-weight: 700; }
+  .actions .save { background: var(--accent); color: var(--accent-fg); border-radius: 14px; padding: 14px; font-weight: 700; font-size: 17px; }
+  .actions .save:disabled { opacity: .6; cursor: wait; }
+  .err { color: var(--danger); font-size: 14px; }
+
+  .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 700; z-index: 30; box-shadow: var(--shadow); max-width: calc(100vw - 32px); text-align: center; }
+  @media (prefers-reduced-motion: no-preference) {
+    .sheet { animation: up .18s ease-out; }
+    @keyframes up { from { transform: translateY(24px); opacity: 0; } }
+    .side.on .t { animation: pulse 1.2s ease-in-out infinite alternate; }
+    @keyframes pulse { to { opacity: .55; } }
+  }
+  img { max-width: 100%; } [hidden] { display: none !important; }
+  :root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  body { margin: 0; }
+  .setup { display: grid; gap: 12px; }
+  .setup ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; }
+  .setup code { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: 13px; }
+  .sync { font-size: 12px; color: var(--muted); text-align: right; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="label" id="today-label">Vandaag</div>
+      <h1>Baby Logboek</h1>
+    </div>
+    <div class="hright">
+      <button id="gear" type="button" aria-label="Instellingen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+      <div id="who" class="muted"></div>
+      <div class="sync" id="sync"></div>
+    </div>
+  </header>
+
+  <div id="banner" hidden></div>
+
+  <section class="card setup" id="setup" hidden>
+    <h3>Koppel je GitHub-repo</h3>
+    <p class="muted" style="margin:0;font-size:14px">Het logboek bewaart alles als JSON-bestandjes in een privé-repo van jezelf. Eén keer instellen per telefoon.</p>
+    <ol>
+      <li>Maak op GitHub een <b>privé</b> repo, bv. <code>baby-logboek-data</code>.</li>
+      <li>Maak een <b>fine-grained personal access token</b> (Settings → Developer settings) met enkel die repo en <i>Contents: Read and write</i>.</li>
+      <li>Vul hieronder in. Je partner vult op haar telefoon dezelfde gegevens in.</li>
+    </ol>
+    <div class="field"><span class="label">Jouw naam (staat bij wat je logt)</span><input type="text" id="c-name" placeholder="bv. Quinten"></div>
+    <div class="field"><span class="label">GitHub-gebruiker of organisatie</span><input type="text" id="c-owner" placeholder="bv. quinten" autocapitalize="off"></div>
+    <div class="field"><span class="label">Data-repo</span><input type="text" id="c-repo" placeholder="bv. baby-logboek-data" autocapitalize="off"></div>
+    <div class="field"><span class="label">Token</span><input type="password" id="c-token" placeholder="github_pat_…" autocapitalize="off"></div>
+    <div class="err" id="c-err" hidden></div>
+    <div class="actions"><button class="cancel" id="c-cancel" type="button" hidden>Annuleer</button><button class="save" id="c-save" type="button">Koppelen</button></div>
+  </section>
+
+  <section class="status" aria-label="Sinds laatste">
+    <div class="tile voeding" id="tile-voeding">
+      <span class="label">Laatste voeding</span>
+      <strong class="num" id="since-voeding">–</strong>
+      <small id="since-voeding-sub"></small>
+      <span class="next num" id="next-voeding"></span>
+    </div>
+    <div class="tile pamper">
+      <span class="label">Laatste pamper</span>
+      <strong class="num" id="since-pamper">–</strong>
+      <small id="since-pamper-sub"></small>
+    </div>
+  </section>
+
+  <section class="live feeding" id="feeding" hidden>
+    <div class="top">
+      <div><span class="label">Borstvoeding bezig · sinds <span id="feed-start"></span></span><br><strong class="num" id="feed-total">0:00</strong></div>
+      <button class="done" id="feed-done" type="button">Klaar</button>
+    </div>
+    <div class="sides">
+      <button class="side" id="side-L" type="button"><span class="label">Links</span><span class="t num" id="t-L">0:00</span><span class="s" id="s-L">tik om te starten</span></button>
+      <button class="side" id="side-R" type="button"><span class="label">Rechts</span><span class="t num" id="t-R">0:00</span><span class="s" id="s-R">tik om te starten</span></button>
+    </div>
+    <div class="feedctl" id="feedctl">
+      <button id="feed-pause" type="button">Pauze</button>
+      <button id="feed-reset" type="button">Reset</button>
+      <button id="feed-cancel" type="button">Annuleer</button>
+    </div>
+    <div class="feedconfirm" id="feedconfirm" hidden>
+      <span id="feedconfirm-txt"></span>
+      <button id="feedconfirm-no" type="button">Nee</button>
+      <button id="feedconfirm-yes" type="button">Ja</button>
+    </div>
+  </section>
+
+  <section class="live sleeping" id="sleeping" hidden>
+    <div class="top">
+      <div><span class="label">Slaapt sinds <span id="sleep-start"></span></span><br><strong class="num" id="sleep-dur">0 min</strong></div>
+      <button class="done" id="sleep-stop" type="button">Wakker</button>
+    </div>
+  </section>
+
+  <section class="quick" aria-label="Snel loggen">
+    <button class="pamper" id="q-pamper" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16l-1 7a6 6 0 0 1-6 5h-2a6 6 0 0 1-6-5z"/><path d="M4 8c2 2 4 3 8 3s6-1 8-3"/></svg>
+      Pamper
+    </button>
+    <button class="voeding" id="q-voeding" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 2h6v3H9z"/><path d="M8 5h8v3a3 3 0 0 1-1 2v11H9V10a3 3 0 0 1-1-2z"/><path d="M9 14h6"/></svg>
+      Voeding
+    </button>
+    <button class="slaap" id="q-slaap" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/><path d="M15 3h4l-4 4h4"/></svg>
+      <span id="q-slaap-txt">Slaap</span>
+    </button>
+  </section>
+  <section class="quick small" aria-label="Ook loggen">
+    <button id="q-gewicht" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4"/><path d="M4 7h16"/><path d="M6 7l-3 7a3.5 3.5 0 0 0 7 0L7 7"/><path d="M18 7l-3 7a3.5 3.5 0 0 0 7 0l-3-7"/><path d="M12 7v14M9 21h6"/></svg>Gewicht</button>
+    <button id="q-temp" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v8"/></svg>Temp</button>
+    <button id="q-medicatie" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="9" width="18" height="6" rx="3" transform="rotate(-45 12 12)"/><path d="M8.5 15.5l7-7"/></svg>Medicatie</button>
+  </section>
+
+  <section class="summary" aria-label="Totalen van de dag" id="summary">
+    <div class="tile"><span class="label">Pampers</span><div class="big num" id="s-pamper">0</div><small id="s-pamper-sub">–</small></div>
+    <div class="tile"><span class="label">Voedingen</span><div class="big num" id="s-voeding">0</div><small id="s-voeding-sub">–</small></div>
+    <div class="tile"><span class="label">Slaap</span><div class="big num" id="s-slaap">0u</div><small id="s-slaap-sub">–</small></div>
+  </section>
+
+  <div class="tabs" role="tablist">
+    <button id="tab-log" role="tab" aria-selected="true" type="button">Logboek</button>
+    <button id="tab-overzicht" role="tab" aria-selected="false" type="button">Overzicht</button>
+  </div>
+
+  <section id="view-log">
+    <div class="daynav">
+      <button id="prev" type="button" aria-label="Vorige dag">‹</button>
+      <h2 id="day-title">Vandaag</h2>
+      <button id="next" type="button" aria-label="Volgende dag">›</button>
+    </div>
+    <div class="timeline" id="timeline"></div>
+  </section>
+
+  <section id="view-overzicht" hidden style="display:grid;gap:14px"></section>
+
+  <p class="note" id="hint">Tik op een regel in het logboek om ze te bewerken. De volgende voeding begin je met de borst waar de vorige eindigde; dat staat bovenaan bij de aftelling. De gegevens staan in jullie eigen GitHub-repo en worden om de halve minuut ververst. Een echt alarm op een vergrendelde telefoon kan een webpagina niet zetten; zet daarvoor je wekker op de aangegeven tijd.</p>
+</div>
+
+<div id="scrim" class="scrim" hidden></div>
+<div id="sheet" class="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+  <div class="inner">
+    <h2 id="sheet-title"></h2>
+    <div id="sheet-fields"></div>
+    <div class="field" id="time-field">
+      <span class="label" id="time-label">Tijdstip</span>
+      <input type="datetime-local" id="f-time">
+    </div>
+    <div class="field" id="note-field">
+      <span class="label">Notitie (optioneel)</span>
+      <input type="text" id="f-note" maxlength="140" placeholder="bv. spuugde een beetje">
+    </div>
+    <div class="err" id="sheet-err" hidden></div>
+    <div class="actions">
+      <button class="cancel" id="sheet-cancel" type="button">Annuleer</button>
+      <button class="save" id="sheet-save" type="button">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const pad = (n) => String(n).padStart(2, '0');
+  const dayKey = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const parseDay = (key) => { const [Y, M, D] = key.split('-').map(Number); return new Date(Y, M - 1, D); };
+  const addDays = (key, n) => { const d = parseDay(key); d.setDate(d.getDate() + n); return dayKey(d); };
+  const hhmm = (d) => pad(d.getHours()) + ':' + pad(d.getMinutes());
+  const toLocalInput = (d) => dayKey(d) + 'T' + hhmm(d);
+  const fmtDur = (ms) => { const m = Math.max(0, Math.round(ms / 60000)); if (m < 60) return m + ' min'; const h = Math.floor(m / 60), r = m % 60; return r ? h + 'u' + pad(r) : h + 'u'; };
+  const fmtH = (ms) => { const m = Math.max(0, Math.round(ms / 60000)); return (Math.floor(m / 60)) + 'u' + (m % 60 ? pad(m % 60) : ''); };
+  const fmtClock = (sec) => { sec = Math.max(0, Math.round(sec)); return Math.floor(sec / 60) + ':' + pad(sec % 60); };
+  const fmtAgo = (ms) => ms < 60000 ? 'net' : fmtDur(ms) + ' geleden';
+  const fmtTemp = (t) => (Math.round(t * 10) / 10).toFixed(1).replace('.', ',') + ' °C';
+  const DAYS = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+  const MONTHS = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+  const SIDE = { L: 'links', R: 'rechts', beide: 'links + rechts' };
+  const KLEUR = { zwart: 'zwart', bruin: 'bruin', groen: 'groen', geel: 'geel' };
+  const shortDate = (key) => { const d = parseDay(key); return d.getDate() + '/' + (d.getMonth() + 1); };
+  const dayTitle = (key) => {
+    const today = dayKey(new Date());
+    if (key === today) return 'Vandaag';
+    if (key === addDays(today, -1)) return 'Gisteren';
+    const d = parseDay(key);
+    return DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()];
+  };
+  const babyDay = (key) => settings.birthDate ? Math.round((parseDay(key) - parseDay(settings.birthDate)) / 86400000) : null;
+
+  let store = null, myId = null, canWrite = null;
+  let events = [];
+  let settings = { intervalMin: 180, sound: true, birthDate: '', birthWeight: 0 };
+  let viewDay = dayKey(new Date());
+  let tab = location.hash === '#overzicht' ? 'overzicht' : 'log';
+  let loaded = false, loadTimer = null;
+  let openSheet = null;
+  let busy = false;
+  let chimedFor = null;
+  let audioCtx = null;
+
+  function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2400); }
+  function banner(msg, warn) { const b = $('banner'); b.className = 'note' + (warn ? ' warn' : ''); b.textContent = msg; b.hidden = !msg; }
+  function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+  function unlockAudio() { if (audioCtx) return; try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audioCtx = null; } }
+  function chime() {
+    try { if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]); } catch (e) {}
+    if (!settings.sound || !audioCtx) return;
+    try {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const now = audioCtx.currentTime;
+      [0, .25, .5, 1, 1.25, 1.5].forEach((off, i) => {
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = 'sine'; o.frequency.value = i % 3 === 2 ? 1046 : 784;
+        g.gain.setValueAtTime(0, now + off); g.gain.linearRampToValueAtTime(.25, now + off + .02); g.gain.exponentialRampToValueAtTime(.001, now + off + .22);
+        o.connect(g); g.connect(audioCtx.destination); o.start(now + off); o.stop(now + off + .25);
+      });
+    } catch (e) {}
+  }
+
+  /* ---------- derived ---------- */
+  const activeSleep = () => events.find(e => e.type === 'slaap' && !e.end);
+  const activeFeed = () => events.find(e => e.type === 'voeding' && e.sub === 'borst' && e.end === null);
+  const lastFeed = () => events.find(e => e.type === 'voeding');
+  const lastBreastFeed = () => events.find(e => e.type === 'voeding' && e.sub === 'borst');
+  const lastOf = (type) => events.find(e => e.type === type);
+  function sideSeconds(e, side, now) {
+    let s = Number(e[side === 'L' ? 'l' : 'r']) || 0;
+    if (e.end === null && e.running === side && e.runSince) s += (now - new Date(e.runSince)) / 1000;
+    return s;
+  }
+  function lastSideUsed(e) { if (!e) return null; if (e.lastSide) return e.lastSide; if (e.side === 'beide') return 'R'; return e.side || null; }
+  // Volgende voeding begint met de borst waarmee de vorige eindigde.
+  function suggestedSide() { return lastSideUsed(lastBreastFeed()); }
+  function feedMinutes(e, now) { return e.l != null || e.r != null ? (sideSeconds(e, 'L', now) + sideSeconds(e, 'R', now)) / 60 : (Number(e.ml) || 0); }
+  function prevWeight(e) { return events.filter(x => x.type === 'gewicht' && x.ts < e.ts).sort((a, b) => a.ts < b.ts ? 1 : -1)[0]; }
+
+  function describe(e, now) {
+    if (e.type === 'pamper') {
+      const map = { nat: 'Nat', vuil: 'Vuil', beide: 'Nat + vuil', droog: 'Droog' };
+      return { title: 'Pamper · ' + (map[e.sub] || ''), sub: e.kleur ? 'stoelgang ' + (KLEUR[e.kleur] || e.kleur) : '' };
+    }
+    if (e.type === 'voeding') {
+      if (e.sub === 'fles') return { title: 'Fles · ' + (e.ml || 0) + ' ml', sub: '' };
+      if (e.end === null) return { title: 'Borstvoeding bezig…', sub: 'L ' + fmtClock(sideSeconds(e, 'L', now)) + ' · R ' + fmtClock(sideSeconds(e, 'R', now)) };
+      if (e.l != null || e.r != null) {
+        const l = Math.round((e.l || 0) / 60), r = Math.round((e.r || 0) / 60);
+        const sides = [e.firstSide ? 'begonnen ' + SIDE[e.firstSide] : '', e.lastSide ? 'geëindigd ' + SIDE[e.lastSide] : ''].filter(Boolean).join(' · ');
+        return { title: 'Borst · L ' + l + ' min · R ' + r + ' min', sub: sides };
+      }
+      return { title: 'Borst' + (e.side ? ' · ' + SIDE[e.side] : ''), sub: e.ml ? e.ml + ' min' : '' };
+    }
+    if (e.type === 'slaap') {
+      if (!e.end) return { title: 'Slaapt…', sub: 'sinds ' + hhmm(new Date(e.ts)) };
+      return { title: 'Slaap · ' + fmtDur(new Date(e.end) - new Date(e.ts)), sub: hhmm(new Date(e.ts)) + ' – ' + hhmm(new Date(e.end)) };
+    }
+    if (e.type === 'gewicht') {
+      const p = prevWeight(e); const parts = [];
+      if (p) { const d = e.g - p.g; parts.push((d >= 0 ? '+' : '') + d + ' g t.o.v. ' + shortDate(p.day)); }
+      if (settings.birthWeight) parts.push(((e.g - settings.birthWeight) / settings.birthWeight * 100).toFixed(1).replace('.', ',') + ' % t.o.v. geboorte');
+      return { title: 'Gewicht · ' + e.g + ' g', sub: parts.join(' · ') };
+    }
+    if (e.type === 'temp') return { title: 'Temperatuur · ' + fmtTemp(e.c), sub: e.c >= 38 ? 'koorts' : e.c >= 37.5 ? 'verhoging' : '' };
+    if (e.type === 'medicatie') return { title: 'Medicatie · ' + (e.naam || ''), sub: e.dosis || '' };
+    return { title: e.type, sub: '' };
+  }
+
+  /* ---------- rendering ---------- */
+  function renderLive() {
+    const now = Date.now();
+    const f = activeFeed();
+    $('feeding').hidden = !f;
+    if (f) {
+      $('feed-start').textContent = hhmm(new Date(f.ts));
+      const l = sideSeconds(f, 'L', now), r = sideSeconds(f, 'R', now);
+      $('feed-total').textContent = fmtClock(l + r);
+      $('t-L').textContent = fmtClock(l); $('t-R').textContent = fmtClock(r);
+      $('side-L').classList.toggle('on', f.running === 'L'); $('side-R').classList.toggle('on', f.running === 'R');
+      $('s-L').textContent = f.running === 'L' ? 'bezig · tik om te pauzeren' : (l ? 'gepauzeerd' : 'tik om te starten');
+      $('s-R').textContent = f.running === 'R' ? 'bezig · tik om te pauzeren' : (r ? 'gepauzeerd' : 'tik om te starten');
+      const paused = !f.running;
+      $('feed-pause').textContent = paused ? 'Hervat' : 'Pauze';
+      $('feed-pause').disabled = paused && !f.lastSide && !(l || r);
+    }
+    const s = activeSleep();
+    $('sleeping').hidden = !s;
+    if (s) { $('sleep-start').textContent = hhmm(new Date(s.ts)); $('sleep-dur').textContent = fmtDur(now - new Date(s.ts)); }
+    $('q-slaap-txt').textContent = s ? 'Wakker' : 'Slaap';
+
+    const lv = lastFeed();
+    const tile = $('tile-voeding'), nx = $('next-voeding');
+    tile.classList.remove('due');
+    if (lv) {
+      const due = new Date(lv.ts).getTime() + settings.intervalMin * 60000;
+      const sug = suggestedSide();
+      const sugTxt = sug ? ' · begin ' + SIDE[sug] : '';
+      if (f) nx.textContent = 'Voeding bezig';
+      else if (now < due) nx.textContent = 'Volgende ±' + hhmm(new Date(due)) + ' · over ' + fmtDur(due - now) + sugTxt;
+      else {
+        nx.textContent = 'Voedingstijd · ' + fmtDur(now - due) + ' over tijd' + sugTxt;
+        tile.classList.add('due');
+        if (chimedFor !== lv.ts) { chimedFor = lv.ts; if (now - due < 120000) { chime(); toast('Tijd voor een voeding' + sugTxt); } }
+      }
+    } else nx.textContent = '';
+  }
+
+  function renderHeader() {
+    const d = new Date();
+    const bd = babyDay(dayKey(d));
+    $('today-label').textContent = DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + (bd != null && bd >= 0 ? ' · dag ' + bd : '');
+  }
+
+  async function render() {
+    const now = Date.now();
+    renderHeader();
+    const lv = lastFeed();
+    const lp = events.find(e => e.type === 'pamper');
+    $('since-voeding').textContent = lv ? fmtAgo(now - new Date(lv.ts)) : '–';
+    $('since-voeding-sub').textContent = lv ? hhmm(new Date(lv.ts)) + ' · ' + describe(lv, now).title.replace(/^(Fles|Borst) · /, '').replace(/^Borstvoeding bezig…$/, 'bezig') : 'nog niets gelogd';
+    $('since-pamper').textContent = lp ? fmtAgo(now - new Date(lp.ts)) : '–';
+    $('since-pamper-sub').textContent = lp ? hhmm(new Date(lp.ts)) + ' · ' + describe(lp, now).title.replace(/^Pamper · /, '') : 'nog niets gelogd';
+    renderLive();
+
+    const st = dayStats(viewDay, now);
+    $('day-title').textContent = dayTitle(viewDay) + (babyDay(viewDay) != null && babyDay(viewDay) >= 0 ? ' · dag ' + babyDay(viewDay) : '');
+    $('next').disabled = viewDay >= dayKey(new Date());
+    $('s-pamper').textContent = st.pampers;
+    $('s-pamper-sub').textContent = st.pampers ? st.nat + ' nat · ' + st.vuil + ' vuil' : '–';
+    $('s-voeding').textContent = st.feeds;
+    $('s-voeding-sub').textContent = st.feeds ? [st.borst ? st.borst + '× borst' + (st.borstMin ? ' · ' + st.borstMin + ' min' : '') : '', st.ml ? st.ml + ' ml fles' : ''].filter(Boolean).join(' · ') : '–';
+    $('s-slaap').textContent = st.sleeps ? fmtDur(st.sleepMs) : '0u';
+    $('s-slaap-sub').textContent = st.sleeps ? st.sleeps + (st.sleeps === 1 ? ' dutje' : ' dutjes') : '–';
+
+    $('tab-log').setAttribute('aria-selected', String(tab === 'log'));
+    $('tab-overzicht').setAttribute('aria-selected', String(tab === 'overzicht'));
+    $('view-log').hidden = tab !== 'log';
+    $('view-overzicht').hidden = tab !== 'overzicht';
+    if (tab === 'overzicht') { renderOverzicht(now); return; }
+
+    const list = events.filter(e => e.day === viewDay).slice().sort((a, b) => a.ts < b.ts ? 1 : -1);
+
+    const tl = $('timeline'); tl.replaceChildren();
+    if (!loaded && !list.length) { const d = el('div', 'empty'); d.innerHTML = '<b>Laden…</b>Even geduld, het logboek wordt opgehaald.'; tl.appendChild(d); return; }
+    if (!list.length) {
+      const d = el('div', 'empty');
+      d.innerHTML = '<b>Nog niets gelogd</b>' + (viewDay === dayKey(new Date()) ? 'Tik hierboven op Pamper, Voeding of Slaap.' : 'Geen invoer op deze dag.');
+      tl.appendChild(d); return;
+    }
+    for (const e of list) {
+      const row = el('div', 'row ' + e.type); row.dataset.id = e.id;
+      const time = el('div', 'time num', hhmm(new Date(e.ts)));
+      const what = el('div', 'what');
+      const d = describe(e, now);
+      what.appendChild(el('b', '', d.title));
+      const who = typeof e.by === 'string' ? e.by : '';
+      const subParts = [d.sub, e.note, who].filter(Boolean);
+      if (subParts.length) what.appendChild(el('span', '', subParts.join(' · ')));
+      const del = el('button', 'del', 'Wis'); del.type = 'button'; del.setAttribute('aria-label', 'Wis deze invoer');
+      del.hidden = canWrite === false;
+      del.addEventListener('click', () => askDelete(row, e));
+      if (canWrite !== false) { what.setAttribute('role', 'button'); what.tabIndex = 0; what.setAttribute('aria-label', 'Bewerk deze invoer'); what.addEventListener('click', () => open(e.type, e)); what.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') open(e.type, e); }); }
+      row.append(el('div', 'bar'), time, what, del);
+      tl.appendChild(row);
+    }
+  }
+
+  function dayStats(key, now) {
+    const list = events.filter(e => e.day === key);
+    const pampers = list.filter(e => e.type === 'pamper');
+    const feeds = list.filter(e => e.type === 'voeding');
+    const breast = feeds.filter(e => e.sub === 'borst');
+    const sleeps = list.filter(e => e.type === 'slaap');
+    const temps = list.filter(e => e.type === 'temp');
+    return {
+      key, pampers: pampers.length,
+      nat: pampers.filter(e => e.sub === 'nat' || e.sub === 'beide').length,
+      vuil: pampers.filter(e => e.sub === 'vuil' || e.sub === 'beide').length,
+      feeds: feeds.length, borst: breast.length,
+      borstMin: Math.round(breast.reduce((a, e) => a + feedMinutes(e, now), 0)),
+      fles: feeds.filter(e => e.sub === 'fles').length,
+      ml: feeds.filter(e => e.sub === 'fles').reduce((a, e) => a + (Number(e.ml) || 0), 0),
+      sleeps: sleeps.length,
+      sleepMs: sleeps.reduce((a, e) => a + ((e.end ? new Date(e.end) : new Date(now)) - new Date(e.ts)), 0),
+      weight: list.filter(e => e.type === 'gewicht').sort((a, b) => a.ts < b.ts ? 1 : -1)[0] || null,
+      tempMax: temps.length ? Math.max(...temps.map(e => Number(e.c))) : null,
+      tempMin: temps.length ? Math.min(...temps.map(e => Number(e.c))) : null,
+      meds: list.filter(e => e.type === 'medicatie')
+    };
+  }
+
+  /* ---------- charts ---------- */
+  const svgNS = 'http://www.w3.org/2000/svg';
+  function sv(tag, attrs, text) { const n = document.createElementNS(svgNS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (text != null) n.textContent = text; return n; }
+  function barChart(days, series, opts) {
+    const W = 360, H = 170, padL = 28, padR = 8, padT = 14, padB = 24;
+    const svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': opts.label });
+    const totals = days.map((d, i) => series.reduce((a, s) => a + (s.values[i] || 0), 0));
+    const max = Math.max(opts.min || 1, ...totals);
+    const steps = niceSteps(max, 4);
+    const y = (v) => padT + (H - padT - padB) * (1 - v / steps.max);
+    for (const t of steps.ticks) { svg.appendChild(sv('line', { x1: padL, x2: W - padR, y1: y(t), y2: y(t), class: 'grid' })); svg.appendChild(sv('text', { x: padL - 4, y: y(t) + 4, 'text-anchor': 'end', class: 'svgtxt' }, opts.fmt ? opts.fmt(t) : t)); }
+    const slot = (W - padL - padR) / days.length, bw = Math.min(28, slot * .62);
+    days.forEach((d, i) => {
+      const x = padL + slot * i + (slot - bw) / 2; let acc = 0;
+      series.forEach(s => {
+        const v = s.values[i] || 0; if (!v) return;
+        svg.appendChild(sv('rect', { x, y: y(acc + v), width: bw, height: Math.max(1, y(acc) - y(acc + v)), rx: 3, fill: s.color }));
+        acc += v;
+      });
+      if (totals[i]) svg.appendChild(sv('text', { x: x + bw / 2, y: y(totals[i]) - 4, 'text-anchor': 'middle', class: 'svgval' }, opts.fmt ? opts.fmt(totals[i]) : totals[i]));
+      svg.appendChild(sv('text', { x: x + bw / 2, y: H - 7, 'text-anchor': 'middle', class: 'svgtxt' }, shortDate(d)));
+    });
+    return svg;
+  }
+  function lineChart(days, points, opts) {
+    const W = 360, H = 180, padL = 40, padR = 10, padT = 14, padB = 24;
+    const svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': opts.label });
+    const vals = points.filter(p => p.v != null).map(p => p.v).concat((opts.refs || []).map(r => r.v));
+    if (!vals.length) return svg;
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    if (opts.minSpan && hi - lo < opts.minSpan) { const mid = (hi + lo) / 2; lo = mid - opts.minSpan / 2; hi = mid + opts.minSpan / 2; }
+    const span = hi - lo || 1; lo -= span * .12; hi += span * .12;
+    const y = (v) => padT + (H - padT - padB) * (1 - (v - lo) / (hi - lo));
+    const slot = (W - padL - padR) / days.length;
+    const x = (i) => padL + slot * i + slot / 2;
+    const ticks = niceTicks(lo, hi, 4);
+    for (const t of ticks) { svg.appendChild(sv('line', { x1: padL, x2: W - padR, y1: y(t), y2: y(t), class: 'grid' })); svg.appendChild(sv('text', { x: padL - 4, y: y(t) + 4, 'text-anchor': 'end', class: 'svgtxt' }, opts.fmt(t))); }
+    for (const r of opts.refs || []) {
+      svg.appendChild(sv('line', { x1: padL, x2: W - padR, y1: y(r.v), y2: y(r.v), class: 'ref', stroke: r.color }));
+      svg.appendChild(sv('text', { x: W - padR, y: y(r.v) - 3, 'text-anchor': 'end', class: 'svgtxt', fill: r.color, style: 'fill:' + r.color }, r.label));
+    }
+    const pts = points.map((p, i) => p.v == null ? null : [x(i), y(p.v)]).filter(Boolean);
+    if (pts.length > 1) svg.appendChild(sv('polyline', { points: pts.map(p => p.join(',')).join(' '), fill: 'none', stroke: opts.color, 'stroke-width': 2.5, 'stroke-linejoin': 'round' }));
+    points.forEach((p, i) => {
+      if (p.v == null) return;
+      svg.appendChild(sv('circle', { cx: x(i), cy: y(p.v), r: 4, fill: opts.color }));
+      svg.appendChild(sv('text', { x: x(i), y: y(p.v) - 8, 'text-anchor': 'middle', class: 'svgval' }, opts.fmt(p.v)));
+    });
+    days.forEach((d, i) => svg.appendChild(sv('text', { x: x(i), y: H - 7, 'text-anchor': 'middle', class: 'svgtxt' }, shortDate(d))));
+    return svg;
+  }
+  function niceSteps(max, n) { const raw = max / n; const p = Math.pow(10, Math.floor(Math.log10(raw))); const s = [1, 2, 2.5, 5, 10].map(m => m * p).find(v => v >= raw); const top = Math.ceil(max / s) * s; const ticks = []; for (let t = 0; t <= top + 1e-9; t += s) ticks.push(Math.round(t * 100) / 100); return { max: top, ticks }; }
+  function niceTicks(lo, hi, n) { const raw = (hi - lo) / n; const p = Math.pow(10, Math.floor(Math.log10(raw))); const s = [1, 2, 2.5, 5, 10].map(m => m * p).find(v => v >= raw); const ticks = []; for (let t = Math.ceil(lo / s) * s; t <= hi + 1e-9; t += s) ticks.push(Math.round(t * 100) / 100); return ticks; }
+
+  function table(cols, rows) {
+    const wrap = el('div', 'tablewrap'); const t = el('table'); const thead = el('thead'); const tr = el('tr');
+    cols.forEach(c => { const th = el('th', c.num ? 'n' : '', c.h); tr.appendChild(th); }); thead.appendChild(tr); t.appendChild(thead);
+    const tb = el('tbody');
+    rows.forEach(r => { const tr = el('tr'); cols.forEach((c, i) => { const td = el('td', (c.num ? 'n' : '') + (r.today && i === 0 ? ' today' : ''), r.cells[i]); tr.appendChild(td); }); tb.appendChild(tr); });
+    t.appendChild(tb); wrap.appendChild(t); return wrap;
+  }
+  function card(title, sub, chart, legend, tbl) {
+    const c = el('div', 'card'); c.appendChild(el('h3', '', title)); if (sub) c.appendChild(el('div', 'sub', sub));
+    if (chart) c.appendChild(chart);
+    if (legend) { const l = el('div', 'legend'); legend.forEach(([color, text]) => { const s = el('span'); const i = el('i'); i.style.background = color; s.append(i, text); l.appendChild(s); }); c.appendChild(l); }
+    if (tbl) c.appendChild(tbl); return c;
+  }
+
+  function renderOverzicht(now) {
+    const v = $('view-overzicht'); v.replaceChildren();
+    const today = dayKey(new Date());
+    if (!events.length) { v.appendChild(card('Overzicht', 'Nog geen gegevens om te tonen.')); return; }
+    const first = events.reduce((a, e) => e.day < a ? e.day : a, today);
+    const start = settings.birthDate && settings.birthDate < first ? settings.birthDate : first;
+    let days = []; for (let k = start; k <= today; k = addDays(k, 1)) days.push(k);
+    if (days.length > 14) days = days.slice(-14);
+    const stats = days.map(k => dayStats(k, now));
+    const dl = (k) => (babyDay(k) != null && babyDay(k) >= 0 ? 'dag ' + babyDay(k) + ' · ' : '') + shortDate(k);
+    const dayRows = (cellsFn) => stats.slice().reverse().map(s => ({ today: s.key === today, cells: cellsFn(s) }));
+
+    // Gewicht
+    const weights = events.filter(e => e.type === 'gewicht').sort((a, b) => a.ts < b.ts ? -1 : 1);
+    if (weights.length || settings.birthWeight) {
+      const bw = settings.birthWeight;
+      const refs = bw ? [{ v: bw, label: 'geboorte ' + bw + ' g', color: 'var(--meta)' }, { v: Math.round(bw * .93), label: '−7 % · ' + Math.round(bw * .93) + ' g', color: 'var(--pamper)' }, { v: Math.round(bw * .9), label: '−10 % · ' + Math.round(bw * .9) + ' g', color: 'var(--danger)' }] : [];
+      const pts = stats.map(s => ({ v: s.weight ? s.weight.g : null }));
+      const chart = weights.length ? lineChart(days, pts, { color: 'var(--meta)', fmt: (t) => Math.round(t) + '', refs, label: 'Gewicht per dag', minSpan: 300 }) : null;
+      const rows = weights.slice().reverse().map(w => { const p = prevWeight(w); return { today: w.day === today, cells: [dl(w.day), w.g + ' g', p ? ((w.g - p.g >= 0 ? '+' : '') + (w.g - p.g) + ' g') : '–', bw ? ((w.g - bw) / bw * 100).toFixed(1).replace('.', ',') + ' %' : '–'] }; });
+      v.appendChild(card('Gewicht', bw ? 'Stippellijnen: geboortegewicht, −7 % en −10 %.' : 'Vul het geboortegewicht in bij de instellingen voor de referentielijnen.', chart, null,
+        table([{ h: 'Dag' }, { h: 'Gewicht', num: true }, { h: 'Verschil', num: true }, { h: 'T.o.v. geboorte', num: true }], rows)));
+    }
+
+    // Voeding
+    v.appendChild(card('Voedingen per dag', 'Aantal voedingen; borst en fles apart.',
+      barChart(days, [{ color: 'var(--voeding)', values: stats.map(s => s.borst) }, { color: 'var(--voeding-soft)', values: stats.map(s => s.fles) }], { label: 'Voedingen per dag', min: 8 }),
+      [['var(--voeding)', 'borst'], ['var(--voeding-soft)', 'fles']],
+      table([{ h: 'Dag' }, { h: 'Totaal', num: true }, { h: 'Borst', num: true }, { h: 'Min. borst', num: true }, { h: 'Fles', num: true }, { h: 'ml', num: true }],
+        dayRows(s => [dl(s.key), s.feeds, s.borst, s.borstMin || '–', s.fles || '–', s.ml || '–']))));
+
+    // Pampers
+    v.appendChild(card('Pampers per dag', 'Natte en vuile luiers (een pamper met beide telt bij allebei).',
+      barChart(days, [{ color: 'var(--pamper)', values: stats.map(s => s.nat) }, { color: 'var(--pamper2)', values: stats.map(s => s.vuil) }], { label: 'Pampers per dag', min: 6 }),
+      [['var(--pamper)', 'nat'], ['var(--pamper2)', 'vuil']],
+      table([{ h: 'Dag' }, { h: 'Pampers', num: true }, { h: 'Nat', num: true }, { h: 'Vuil', num: true }, { h: 'Kleur stoelgang' }],
+        dayRows(s => { const kl = [...new Set(events.filter(e => e.day === s.key && e.type === 'pamper' && e.kleur).map(e => e.kleur))]; return [dl(s.key), s.pampers, s.nat, s.vuil, kl.join(', ') || '–']; }))));
+
+    // Slaap
+    v.appendChild(card('Slaap per dag', 'Totale slaap, geteld bij de dag waarop het dutje begon.',
+      barChart(days, [{ color: 'var(--slaap)', values: stats.map(s => Math.round(s.sleepMs / 360000) / 10) }], { label: 'Slaap per dag', min: 8, fmt: (t) => t + 'u' }),
+      null,
+      table([{ h: 'Dag' }, { h: 'Slaap', num: true }, { h: 'Dutjes', num: true }, { h: 'Gemiddeld', num: true }],
+        dayRows(s => [dl(s.key), s.sleeps ? fmtH(s.sleepMs) : '–', s.sleeps || '–', s.sleeps ? fmtDur(s.sleepMs / s.sleeps) : '–']))));
+
+    // Temperatuur
+    const temps = events.filter(e => e.type === 'temp').sort((a, b) => a.ts < b.ts ? 1 : -1);
+    if (temps.length) {
+      v.appendChild(card('Temperatuur', 'Hoogste meting per dag; de stippellijn is 37,5 °C.',
+        lineChart(days, stats.map(s => ({ v: s.tempMax })), { color: 'var(--meta)', fmt: (t) => t.toFixed(1).replace('.', ','), refs: [{ v: 37.5, label: '37,5', color: 'var(--danger)' }], label: 'Temperatuur per dag', minSpan: 1.5 }),
+        null,
+        table([{ h: 'Dag' }, { h: 'Tijd' }, { h: 'Temp', num: true }, { h: 'Notitie' }], temps.map(t => ({ today: t.day === today, cells: [dl(t.day), hhmm(new Date(t.ts)), fmtTemp(t.c), t.note || ''] })))));
+    }
+
+    // Medicatie
+    const meds = events.filter(e => e.type === 'medicatie').sort((a, b) => a.ts < b.ts ? 1 : -1);
+    v.appendChild(card('Medicatie', meds.length ? 'Laatste 30 toedieningen.' : 'Nog geen medicatie gelogd. Gebruik de knop Medicatie hierboven.', null, null,
+      meds.length ? table([{ h: 'Dag' }, { h: 'Tijd' }, { h: 'Middel' }, { h: 'Dosis' }], meds.slice(0, 30).map(m => ({ today: m.day === today, cells: [dl(m.day), hhmm(new Date(m.ts)), m.naam || '', m.dosis || ''] }))) : null));
+  }
+
+  function askDelete(row, e) {
+    row.classList.add('confirm');
+    const box = el('div', 'confirmbox');
+    const yes = el('button', 'yes', 'Wis'); yes.type = 'button';
+    const no = el('button', 'no', 'Nee'); no.type = 'button';
+    box.append(no, yes); row.lastElementChild.replaceWith(box);
+    no.addEventListener('click', () => render());
+    yes.addEventListener('click', async () => { yes.disabled = true; try { await store.remove(e.id); toast('Gewist'); } catch (err) { toast('Wissen mislukt'); render(); } });
+  }
+
+  /* ---------- writes ---------- */
+  function writeFailed(err, fallback) { console.error(err); if (err && err.code === 'auth') { banner('GitHub weigert het token (' + (err.message || '') + '). Pas de koppeling aan via het tandwiel.', true); close(); render(); } else toast((fallback || 'Opslaan mislukt') + (err && err.message ? ' · ' + err.message : '')); }
+  async function guarded(fn) { if (busy || !store) return; busy = true; try { await fn(); } finally { busy = false; } }
+
+  async function toggleSide(side) {
+    const f = activeFeed(); if (!f) return;
+    await guarded(async () => {
+      const now = new Date();
+      const patch = { l: Math.round(sideSeconds(f, 'L', now.getTime())), r: Math.round(sideSeconds(f, 'R', now.getTime())) };
+      if (f.running === side) { patch.running = null; patch.runSince = null; }
+      else { patch.running = side; patch.runSince = now.toISOString(); patch.lastSide = side; if (!f.firstSide) patch.firstSide = side; }
+      try { await store.update(f.id, patch); } catch (err) { writeFailed(err, 'Opslaan mislukt'); }
+    });
+  }
+  async function finishFeed() {
+    const f = activeFeed(); if (!f) return;
+    await guarded(async () => {
+      const now = new Date();
+      const patch = { l: Math.round(sideSeconds(f, 'L', now.getTime())), r: Math.round(sideSeconds(f, 'R', now.getTime())), running: null, runSince: null, end: now.toISOString() };
+      try { await store.update(f.id, patch); toast('Voeding opgeslagen' + (f.lastSide ? ' · volgende keer beginnen met ' + SIDE[f.lastSide] : '')); }
+      catch (err) { writeFailed(err, 'Opslaan mislukt'); }
+    });
+  }
+  async function pauseOrResumeFeed() {
+    const f = activeFeed(); if (!f) return;
+    if (f.running) return toggleSide(f.running);
+    return toggleSide(f.lastSide || f.firstSide || 'L');
+  }
+  function feedConfirm(text, onYes) {
+    $('feedconfirm-txt').textContent = text; $('feedconfirm').hidden = false; $('feedctl').hidden = true;
+    const done = () => { $('feedconfirm').hidden = true; $('feedctl').hidden = false; $('feedconfirm-yes').onclick = null; $('feedconfirm-no').onclick = null; };
+    $('feedconfirm-no').onclick = done;
+    $('feedconfirm-yes').onclick = async () => { done(); await onYes(); };
+  }
+  function resetFeed() {
+    const f = activeFeed(); if (!f) return;
+    feedConfirm('Beide timers op nul zetten en opnieuw beginnen vanaf nu?', () => guarded(async () => {
+      const now = new Date();
+      try { await store.update(f.id, { l: 0, r: 0, running: null, runSince: null, ts: now.toISOString(), day: dayKey(now) }); toast('Timers gereset'); }
+      catch (err) { writeFailed(err, 'Resetten mislukt'); }
+    }));
+  }
+  function cancelFeed() {
+    const f = activeFeed(); if (!f) return;
+    feedConfirm('Deze voeding wissen? De timers gaan verloren.', () => guarded(async () => {
+      try { await store.remove(f.id); toast('Voeding gewist'); }
+      catch (err) { writeFailed(err, 'Wissen mislukt'); }
+    }));
+  }
+  async function stopSleep() {
+    const s = activeSleep(); if (!s) return;
+    await guarded(async () => { try { await store.update(s.id, { end: new Date().toISOString() }); toast('Goedemorgen!'); } catch (err) { writeFailed(err, 'Stoppen mislukt'); } });
+  }
+
+  /* ---------- sheet ---------- */
+  function seg(options, value, onPick) {
+    const wrap = el('div', 'seg');
+    for (const [v, label] of options) {
+      const b = el('button', '', label); b.type = 'button'; b.setAttribute('aria-pressed', String(v === value));
+      b.addEventListener('click', () => { onPick(v); [...wrap.children].forEach(c => c.setAttribute('aria-pressed', String(c === b))); });
+      wrap.appendChild(b);
+    }
+    return wrap;
+  }
+  function field(label, control) { const f = el('div', 'field'); f.append(el('span', 'label', label), control); return f; }
+  function numInput(value, step, onChange, id, decimals) {
+    const w = el('div', 'ml');
+    const minus = el('button', '', '−'); minus.type = 'button'; minus.setAttribute('aria-label', 'Minder');
+    const plus = el('button', '', '+'); plus.type = 'button'; plus.setAttribute('aria-label', 'Meer');
+    const inp = el('input'); inp.type = 'number'; inp.min = '0'; inp.step = String(step); inp.value = String(value); inp.id = id || 'f-amount'; inp.inputMode = decimals ? 'decimal' : 'numeric';
+    const fix = (v) => decimals ? Math.round(v * 10) / 10 : Math.round(v);
+    const set = (v) => { v = Math.max(0, fix(v)); inp.value = String(v); onChange(v); };
+    minus.addEventListener('click', () => set(Number(inp.value) - step));
+    plus.addEventListener('click', () => set(Number(inp.value) + step));
+    inp.addEventListener('input', () => onChange(Number(inp.value.replace(',', '.')) || 0));
+    w.append(minus, inp, plus); return w;
+  }
+  function textInput(value, id, placeholder) { const i = el('input'); i.type = 'text'; i.id = id; i.value = value || ''; i.placeholder = placeholder || ''; i.maxLength = 80; return i; }
+  function showSheet() { $('scrim').hidden = false; $('sheet').hidden = false; }
+  function close() { $('scrim').hidden = true; $('sheet').hidden = true; openSheet = null; }
+
+  function open(type, edit) {
+    const now = new Date();
+    const ed = edit || null;
+    openSheet = {
+      type, edit: ed,
+      sub: ed ? ed.sub : (type === 'pamper' ? 'nat' : 'borst'),
+      side: ed && ed.side ? ed.side : (suggestedSide() || 'L'),
+      ml: ed ? (Number(ed.ml) || 0) : 0,
+      kleur: ed && ed.kleur ? ed.kleur : '',
+      lMin: ed && ed.l != null ? Math.round(ed.l / 60) : 0, rMin: ed && ed.r != null ? Math.round(ed.r / 60) : 0,
+      firstSide: ed ? ed.firstSide || '' : '', lastSide: ed ? ed.lastSide || '' : '',
+      timer: !!(ed && (ed.l != null || ed.r != null)),
+      manual: !!(ed && ed.sub === 'borst' && ed.l == null && ed.r == null),
+      end: ed && ed.end ? ed.end : null
+    };
+    const fields = $('sheet-fields'); fields.replaceChildren(); fields.style.display = 'grid'; fields.style.gap = '14px';
+    const h = $('sheet-title'); h.className = type;
+    $('time-field').hidden = false; $('note-field').hidden = false;
+    $('time-label').textContent = type === 'slaap' ? 'Ingeslapen om' : type === 'voeding' ? 'Begonnen om' : 'Tijdstip';
+    $('f-time').value = toLocalInput(ed ? new Date(ed.ts) : now);
+    $('f-note').value = ed ? (ed.note || '') : '';
+    $('sheet-err').hidden = true;
+    $('sheet-save').disabled = false; $('sheet-save').hidden = false; $('sheet-save').textContent = ed ? 'Wijzigingen opslaan' : 'Opslaan';
+    const pre = ed ? 'Bewerk · ' : '';
+
+    if (type === 'pamper') {
+      h.textContent = pre + 'Pamper';
+      const kleurBox = el('div');
+      const renderKleur = () => {
+        kleurBox.replaceChildren();
+        if (openSheet.sub === 'vuil' || openSheet.sub === 'beide') kleurBox.appendChild(field('Kleur stoelgang', seg([['zwart','Zwart'],['bruin','Bruin'],['groen','Groen'],['geel','Geel']], openSheet.kleur, v => openSheet.kleur = v)));
+      };
+      fields.appendChild(field('Wat zat erin?', seg([['nat','Nat'],['vuil','Vuil'],['beide','Beide'],['droog','Droog']], openSheet.sub, v => { openSheet.sub = v; renderKleur(); })));
+      fields.appendChild(kleurBox); renderKleur();
+    }
+    if (type === 'voeding') {
+      h.textContent = pre + 'Voeding';
+      const detail = el('div'); detail.style.display = 'grid'; detail.style.gap = '14px';
+      const activeEdit = ed && ed.sub === 'borst' && ed.end === null;
+      const renderDetail = () => {
+        detail.replaceChildren();
+        if (openSheet.sub === 'borst') {
+          if (activeEdit) {
+            detail.appendChild(el('p', 'note', 'Deze voeding loopt nog. De timers pas je aan in het roze paneel; hier kan je het starttijdstip en de notitie wijzigen.'));
+            $('sheet-save').hidden = false;
+          } else if (openSheet.timer) {
+            detail.appendChild(field('Links (minuten)', numInput(openSheet.lMin, 1, v => openSheet.lMin = v, 'f-lmin')));
+            detail.appendChild(field('Rechts (minuten)', numInput(openSheet.rMin, 1, v => openSheet.rMin = v, 'f-rmin')));
+            detail.appendChild(field('Begonnen met', seg([['L','Links'],['R','Rechts']], openSheet.firstSide, v => openSheet.firstSide = v)));
+            detail.appendChild(field('Geëindigd met (bepaalt de volgende startborst)', seg([['L','Links'],['R','Rechts']], openSheet.lastSide, v => openSheet.lastSide = v)));
+            $('sheet-save').hidden = false;
+          } else if (!openSheet.manual) {
+            const sug = suggestedSide();
+            const grid = el('div', 'startgrid');
+            for (const s of ['L', 'R']) {
+              const b = el('button', 'start' + (sug === s ? ' suggest' : '')); b.type = 'button';
+              b.innerHTML = '<span>Start ' + SIDE[s] + '</span><small>' + (sug === s ? 'hier eindigde de vorige voeding' : '') + '</small>';
+              b.addEventListener('click', () => startFeed(s));
+              grid.appendChild(b);
+            }
+            detail.appendChild(field('Timer · begin met de borst waar je vorige keer eindigde', grid));
+            const m = el('button', 'linkbtn', 'Of invoeren zonder timer'); m.type = 'button';
+            m.addEventListener('click', () => { openSheet.manual = true; renderDetail(); });
+            detail.appendChild(m); $('sheet-save').hidden = true;
+          } else {
+            detail.appendChild(field('Geëindigd met (bepaalt de volgende startborst)', seg([['L','Links'],['R','Rechts']], openSheet.side === 'beide' ? 'R' : openSheet.side, v => openSheet.side = v)));
+            detail.appendChild(field('Duur (minuten, optioneel)', numInput(openSheet.ml || 0, 5, v => openSheet.ml = v)));
+            if (!ed) { const m = el('button', 'linkbtn', 'Terug naar de timer'); m.type = 'button'; m.addEventListener('click', () => { openSheet.manual = false; renderDetail(); }); detail.appendChild(m); }
+            $('sheet-save').hidden = false;
+          }
+        } else { detail.appendChild(field('Hoeveelheid (ml)', numInput(openSheet.ml || 120, 10, v => openSheet.ml = v))); $('sheet-save').hidden = false; }
+      };
+      if (!activeEdit) fields.appendChild(field('Hoe?', seg([['borst','Borst'],['fles','Fles']], openSheet.sub, v => { openSheet.sub = v; if (v === 'fles') { openSheet.ml = openSheet.ml || 120; openSheet.timer = false; } else { openSheet.ml = 0; openSheet.manual = !!ed; } renderDetail(); })));
+      fields.appendChild(detail); renderDetail();
+    }
+    if (type === 'slaap') {
+      h.textContent = ed ? 'Bewerk · Slaap' : 'Slaap starten';
+      $('sheet-save').textContent = ed ? 'Wijzigingen opslaan' : 'Start slaap';
+      if (ed) {
+        const endInp = el('input'); endInp.type = 'datetime-local'; endInp.id = 'f-end'; endInp.value = ed.end ? toLocalInput(new Date(ed.end)) : '';
+        fields.appendChild(field(ed.end ? 'Wakker om' : 'Wakker om (leeg laten als het dutje nog bezig is)', endInp));
+      }
+    }
+    if (type === 'gewicht') {
+      h.textContent = pre + 'Gewicht';
+      const last = lastOf('gewicht'); openSheet.g = ed ? ed.g : (last ? last.g : (settings.birthWeight || 3500));
+      fields.appendChild(field('Gewicht in gram', numInput(openSheet.g, 10, v => openSheet.g = v, 'f-g')));
+    }
+    if (type === 'temp') {
+      h.textContent = pre + 'Temperatuur';
+      openSheet.c = ed ? Number(ed.c) : 37.0;
+      fields.appendChild(field('Temperatuur in °C', numInput(openSheet.c, 0.1, v => openSheet.c = v, 'f-c', true)));
+    }
+    if (type === 'medicatie') {
+      h.textContent = pre + 'Medicatie';
+      const recent = [...new Set(events.filter(e => e.type === 'medicatie' && e.naam).map(e => e.naam))].slice(0, 6);
+      const naam = textInput(ed ? ed.naam : (recent[0] || ''), 'f-naam', 'bv. vitamine D');
+      const dosis = textInput(ed ? ed.dosis : '', 'f-dosis', 'bv. 1 druppel');
+      const lastSame = () => events.find(e => e.type === 'medicatie' && e.naam === naam.value);
+      const fillDosis = () => { const l = lastSame(); if (l && !dosis.value) dosis.value = l.dosis || ''; };
+      naam.addEventListener('change', fillDosis); fillDosis();
+      if (recent.length) { const chips = el('div', 'chips'); recent.forEach(n => { const b = el('button', '', n); b.type = 'button'; b.addEventListener('click', () => { naam.value = n; dosis.value = ''; fillDosis(); }); chips.appendChild(b); }); fields.appendChild(field('Eerder gebruikt', chips)); }
+      fields.appendChild(field('Middel', naam));
+      fields.appendChild(field('Dosis', dosis));
+    }
+    showSheet();
+  }
+
+  function readTime() {
+    const t = new Date($('f-time').value);
+    if (isNaN(t)) { $('sheet-err').textContent = 'Vul een geldig tijdstip in.'; $('sheet-err').hidden = false; return null; }
+    if (t.getTime() > Date.now() + 5 * 60000) { $('sheet-err').textContent = 'Dat tijdstip ligt in de toekomst.'; $('sheet-err').hidden = false; return null; }
+    return t;
+  }
+  function baseDoc(t) { return { ts: t.toISOString(), day: dayKey(t), by: myId, note: $('f-note').value.trim(), created: new Date().toISOString() }; }
+
+  async function startFeed(side) {
+    const t = readTime(); if (!t) return;
+    if (activeFeed()) { toast('Er loopt al een voeding'); close(); return; }
+    await guarded(async () => {
+      const doc = { ...baseDoc(t), type: 'voeding', sub: 'borst', l: 0, r: 0, running: side, runSince: t.toISOString(), firstSide: side, lastSide: side, end: null };
+      try { await store.add(doc); toast('Timer gestart · ' + SIDE[side]); close(); } catch (err) { writeFailed(err, 'Starten mislukt'); }
+    });
+  }
+
+  async function save() {
+    if (!openSheet) return;
+    const t = readTime(); if (!t) return;
+    const ed = openSheet.edit;
+    const doc = { ...baseDoc(t), type: openSheet.type };
+    if (ed) { doc.by = ed.by || myId; doc.created = ed.created || doc.created; doc.edited = new Date().toISOString(); }
+    const fail = (msg) => { $('sheet-err').textContent = msg; $('sheet-err').hidden = false; };
+    if (openSheet.type === 'pamper') { doc.sub = openSheet.sub; if (openSheet.kleur && (openSheet.sub === 'vuil' || openSheet.sub === 'beide')) doc.kleur = openSheet.kleur; }
+    if (openSheet.type === 'voeding') {
+      doc.sub = openSheet.sub; doc.ml = openSheet.ml || 0;
+      if (openSheet.sub === 'borst') {
+        if (ed && ed.end === null) { Object.assign(doc, { l: ed.l || 0, r: ed.r || 0, running: ed.running || null, runSince: ed.runSince || null, firstSide: ed.firstSide || null, lastSide: ed.lastSide || null, end: null }); if (ed.running && ed.runSince) doc.runSince = ed.runSince; }
+        else if (openSheet.timer) { doc.l = Math.round(openSheet.lMin * 60); doc.r = Math.round(openSheet.rMin * 60); doc.firstSide = openSheet.firstSide || null; doc.lastSide = openSheet.lastSide || null; doc.end = t.toISOString(); }
+        else { const s = openSheet.side === 'beide' ? 'R' : openSheet.side; doc.side = s; doc.lastSide = s; doc.end = t.toISOString(); }
+      }
+    }
+    if (openSheet.type === 'slaap') {
+      if (ed) {
+        const ev = $('f-end').value;
+        if (!ev) doc.end = null;
+        else { const en = new Date(ev); if (isNaN(en)) return fail('Vul een geldig tijdstip in bij Wakker om.'); if (en <= t) return fail('Wakker om moet na het inslapen liggen.'); doc.end = en.toISOString(); }
+        if (doc.end === null && activeSleep() && activeSleep().id !== ed.id) return fail('Er loopt al een ander dutje.');
+      } else { if (activeSleep()) { toast('Slaap loopt al'); close(); return; } doc.end = null; }
+    }
+    if (openSheet.type === 'gewicht') { if (!(openSheet.g > 500 && openSheet.g < 30000)) return fail('Vul een gewicht in gram in (bv. 3510).'); doc.g = Math.round(openSheet.g); }
+    if (openSheet.type === 'temp') { if (!(openSheet.c >= 34 && openSheet.c <= 43)) return fail('Vul een temperatuur tussen 34 en 43 °C in.'); doc.c = Math.round(openSheet.c * 10) / 10; }
+    if (openSheet.type === 'medicatie') { doc.naam = $('f-naam').value.trim(); doc.dosis = $('f-dosis').value.trim(); if (!doc.naam) return fail('Vul in welk middel je gaf.'); }
+    $('sheet-save').disabled = true;
+    await guarded(async () => {
+      try {
+        if (ed) { await store.set(ed.id, doc); toast('Aangepast'); }
+        else { await store.add(doc); toast(openSheet.type === 'slaap' ? 'Slaap gestart' : 'Opgeslagen'); }
+        close();
+      }
+      catch (err) { $('sheet-save').disabled = false; if (err && err.code === 'auth') writeFailed(err); else fail('Opslaan mislukt. ' + (err && err.message ? err.message : 'Probeer nog eens.')); }
+    });
+  }
+
+  function openSettings() {
+    openSheet = { type: 'settings' };
+    const h = $('sheet-title'); h.className = ''; h.textContent = 'Instellingen';
+    const fields = $('sheet-fields'); fields.replaceChildren();
+    let interval = settings.intervalMin, sound = settings.sound, birthDate = settings.birthDate, birthWeight = settings.birthWeight;
+    const bd = el('input'); bd.type = 'date'; bd.id = 'f-birthdate'; bd.value = birthDate || ''; bd.addEventListener('change', () => birthDate = bd.value);
+    fields.appendChild(field('Geboortedatum (voor "dag 0, 1, 2…")', bd));
+    fields.appendChild(field('Geboortegewicht in gram', numInput(birthWeight || 0, 10, v => birthWeight = v, 'f-birthweight')));
+    fields.appendChild(field('Herinnering: voeding om de … minuten (vanaf de start van de vorige)', numInput(interval, 15, v => interval = v, 'f-interval')));
+    const lab = el('label', 'check'); const cb = el('input'); cb.type = 'checkbox'; cb.id = 'f-sound'; cb.checked = sound; cb.addEventListener('change', () => sound = cb.checked);
+    lab.append(cb, document.createTextNode('Belletje laten horen als de pagina open staat')); fields.appendChild(lab);
+    fields.appendChild(el('p', 'note', 'Een webpagina kan geen alarm op een vergrendelde telefoon laten afgaan. De aftelling bovenaan toont het tijdstip; zet daar zelf een wekker op als je zeker wil zijn.'));
+    const gl = el('button', 'linkbtn', 'GitHub-koppeling of naam aanpassen'); gl.type = 'button'; gl.addEventListener('click', () => { close(); showSetup(true); }); fields.appendChild(gl);
+    $('time-field').hidden = true; $('note-field').hidden = true; $('sheet-err').hidden = true;
+    $('sheet-save').hidden = false; $('sheet-save').disabled = false; $('sheet-save').textContent = 'Bewaar';
+    openSheet.save = async () => {
+      if (interval < 30) { $('sheet-err').textContent = 'Kies minstens 30 minuten.'; $('sheet-err').hidden = false; return; }
+      $('sheet-save').disabled = true;
+      try { await store.saveSettings({ intervalMin: interval, sound, birthDate: birthDate || '', birthWeight: Math.round(birthWeight) || 0 }); close(); toast('Bewaard'); }
+      catch (err) { $('sheet-save').disabled = false; writeFailed(err, 'Bewaren mislukt'); }
+    };
+    showSheet();
+  }
+
+  /* ---------- wiring ---------- */
+  document.addEventListener('pointerdown', unlockAudio, { once: true });
+  $('q-pamper').addEventListener('click', () => open('pamper'));
+  $('q-voeding').addEventListener('click', () => { if (activeFeed()) { toast('Er loopt al een borstvoeding'); window.scrollTo({ top: 0, behavior: 'smooth' }); } else open('voeding'); });
+  $('q-slaap').addEventListener('click', () => activeSleep() ? stopSleep() : open('slaap'));
+  $('q-gewicht').addEventListener('click', () => open('gewicht'));
+  $('q-temp').addEventListener('click', () => open('temp'));
+  $('q-medicatie').addEventListener('click', () => open('medicatie'));
+  $('sleep-stop').addEventListener('click', stopSleep);
+  $('side-L').addEventListener('click', () => toggleSide('L'));
+  $('side-R').addEventListener('click', () => toggleSide('R'));
+  $('feed-done').addEventListener('click', finishFeed);
+  $('feed-pause').addEventListener('click', pauseOrResumeFeed);
+  $('feed-reset').addEventListener('click', resetFeed);
+  $('feed-cancel').addEventListener('click', cancelFeed);
+  $('gear').addEventListener('click', openSettings);
+  $('sheet-cancel').addEventListener('click', close);
+  $('scrim').addEventListener('click', close);
+  $('sheet-save').addEventListener('click', () => openSheet && openSheet.type === 'settings' ? openSheet.save() : save());
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openSheet) close(); });
+  $('prev').addEventListener('click', () => { viewDay = addDays(viewDay, -1); render(); });
+  $('next').addEventListener('click', () => { viewDay = addDays(viewDay, 1); render(); });
+  const setTab = (t) => { tab = t; if (t === 'overzicht') { if (location.hash !== '#overzicht') location.hash = 'overzicht'; } else if (location.hash) history.replaceState(null, '', location.pathname + location.search); render(); };
+  $('tab-log').addEventListener('click', () => setTab('log'));
+  $('tab-overzicht').addEventListener('click', () => setTab('overzicht'));
+  window.addEventListener('hashchange', () => { const t = location.hash === '#overzicht' ? 'overzicht' : 'log'; if (t !== tab) { tab = t; render(); } });
+  setInterval(() => { if (events.length) renderLive(); }, 1000);
+  setInterval(() => { if (events.length) render(); }, 60000);
+
+  function setWritable(w) {
+    canWrite = w;
+    for (const id of ['q-pamper','q-voeding','q-slaap','q-gewicht','q-temp','q-medicatie','sleep-stop','side-L','side-R','feed-done','feed-pause','feed-reset','feed-cancel','gear']) $(id).disabled = w === false;
+    if (w === false) banner('Je kan dit logboek bekijken maar niet aanvullen. Vraag de eigenaar om je als bewerker toe te voegen.', true);
+  }
+
+  /* ---------- GitHub-store: JSON-bestanden in een privé-repo ---------- */
+  const CFG_KEY = 'babylog-config';
+  function loadConfig() { try { return JSON.parse(localStorage.getItem(CFG_KEY) || 'null'); } catch (e) { return null; } }
+  function saveConfig(c) { try { localStorage.setItem(CFG_KEY, JSON.stringify(c)); } catch (e) {} }
+  const b64enc = (s) => btoa(unescape(encodeURIComponent(s)));
+  const b64dec = (s) => decodeURIComponent(escape(atob(s.replace(/\n/g, ''))));
+  const monthOf = (day) => day.slice(0, 7);
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+  function makeStore(cfg) {
+    const base = 'https://api.github.com/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo) + '/contents/';
+    const files = {};  // path -> {sha, data}
+    const listeners = [];
+    const headers = () => ({ 'Authorization': 'Bearer ' + cfg.token, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' });
+    async function readFile(path) {
+      const r = await fetch(base + path + '?t=' + Date.now(), { headers: headers(), cache: 'no-store' });
+      if (r.status === 404) { files[path] = { sha: null, data: null }; return files[path]; }
+      if (r.status === 401 || r.status === 403) { const e = new Error(r.status === 401 ? 'token ongeldig' : 'geen toegang tot de repo'); e.code = 'auth'; throw e; }
+      if (!r.ok) throw new Error('GitHub ' + r.status);
+      const j = await r.json();
+      let data = null; try { data = JSON.parse(b64dec(j.content)); } catch (e) { data = null; }
+      files[path] = { sha: j.sha, data }; return files[path];
+    }
+    async function writeFile(path, data, message) {
+      const cur = files[path] || { sha: null };
+      const body = { message, content: b64enc(JSON.stringify(data, null, 1)) };
+      if (cur.sha) body.sha = cur.sha;
+      const r = await fetch(base + path, { method: 'PUT', headers: { ...headers(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (r.status === 409 || r.status === 422) { const e = new Error('conflict'); e.code = 'conflict'; throw e; }
+      if (r.status === 401 || r.status === 403) { const e = new Error(r.status === 401 ? 'token ongeldig' : 'token mag niet schrijven'); e.code = 'auth'; throw e; }
+      if (!r.ok) throw new Error('GitHub ' + r.status);
+      const j = await r.json();
+      files[path] = { sha: j.content.sha, data };
+    }
+    async function modifyMonth(month, fn, message) {
+      const path = 'data/' + month + '.json';
+      for (let attempt = 0; attempt < 4; attempt++) {
+        if (!files[path] || attempt > 0) await readFile(path);
+        const arr = (files[path].data && Array.isArray(files[path].data.events)) ? files[path].data.events.slice() : [];
+        const next = fn(arr);
+        try { await writeFile(path, { events: next }, message); emit(); return; }
+        catch (e) { if (e.code !== 'conflict') throw e; await new Promise(res => setTimeout(res, 300 + Math.random() * 500)); }
+      }
+      throw new Error('Opslaan botste met een andere wijziging. Probeer nog eens.');
+    }
+    function allEvents() {
+      const out = [];
+      for (const p in files) if (p.startsWith('data/') && files[p].data && Array.isArray(files[p].data.events)) out.push(...files[p].data.events);
+      return out.sort((a, b) => a.ts < b.ts ? 1 : -1);
+    }
+    function emit() { const ev = allEvents(); const s = files['settings.json'] && files['settings.json'].data; listeners.forEach(fn => fn(ev, s)); }
+    function monthsToLoad() {
+      const d = new Date(); const cur = dayKey(d).slice(0, 7);
+      const p = new Date(d.getFullYear(), d.getMonth() - 1, 1); const prev = dayKey(p).slice(0, 7);
+      return [cur, prev];
+    }
+    const findMonth = (id) => { for (const p in files) { const f = files[p]; if (p.startsWith('data/') && f.data && f.data.events && f.data.events.some(e => e.id === id)) return p.slice(5, 12); } return null; };
+    return {
+      async load() { await Promise.all([...monthsToLoad().map(m => readFile('data/' + m + '.json')), readFile('settings.json')]); emit(); },
+      onChange(fn) { listeners.push(fn); },
+      async add(doc) { const id = newId(); const full = { id, ...doc }; await modifyMonth(monthOf(doc.day), arr => arr.concat(full), 'Log: ' + doc.type + ' ' + doc.day); return id; },
+      async update(id, patch) { const m = findMonth(id); if (!m) throw new Error('invoer niet gevonden'); await modifyMonth(m, arr => arr.map(e => e.id === id ? { ...e, ...patch } : e), 'Update: ' + id); },
+      async set(id, doc) {
+        const old = findMonth(id); const nm = monthOf(doc.day);
+        if (old && old !== nm) await modifyMonth(old, arr => arr.filter(e => e.id !== id), 'Move: ' + id);
+        await modifyMonth(nm, arr => arr.filter(e => e.id !== id).concat({ id, ...doc }), 'Edit: ' + id);
+      },
+      async remove(id) { const m = findMonth(id); if (!m) return; await modifyMonth(m, arr => arr.filter(e => e.id !== id), 'Delete: ' + id); },
+      async saveSettings(s) { if (!files['settings.json']) await readFile('settings.json'); await writeFile('settings.json', s, 'Instellingen'); emit(); },
+      async refresh() { await this.load(); }
+    };
+  }
+
+  function showSetup(editing) {
+    const c = loadConfig() || {};
+    $('c-name').value = c.name || ''; $('c-owner').value = c.owner || ''; $('c-repo').value = c.repo || ''; $('c-token').value = c.token || '';
+    $('c-cancel').hidden = !editing; $('c-err').hidden = true;
+    $('setup').hidden = false; $('setup').scrollIntoView({ block: 'start' });
+  }
+  $('c-cancel').addEventListener('click', () => { $('setup').hidden = true; });
+  $('c-save').addEventListener('click', async () => {
+    const c = { name: $('c-name').value.trim(), owner: $('c-owner').value.trim(), repo: $('c-repo').value.trim(), token: $('c-token').value.trim() };
+    const err = (m) => { $('c-err').textContent = m; $('c-err').hidden = false; };
+    if (!c.name || !c.owner || !c.repo || !c.token) return err('Vul alle vier de velden in.');
+    $('c-save').disabled = true;
+    try {
+      const test = makeStore(c); await test.load();
+      saveConfig(c); $('setup').hidden = true; $('c-save').disabled = false;
+      boot();
+    } catch (e) { $('c-save').disabled = false; err(e.code === 'auth' ? 'GitHub weigert: ' + e.message + '. Klopt het token en heeft het toegang tot deze repo?' : 'Koppelen mislukt: ' + e.message); }
+  });
+
+  let pollTimer = null;
+  async function boot() {
+    const cfg = loadConfig();
+    if (!cfg) { loaded = true; setWritable(false); banner(''); $('setup').hidden = false; render(); return; }
+    myId = cfg.name; $('who').textContent = 'Ingelogd als ' + cfg.name;
+    store = makeStore(cfg);
+    canWrite = null; for (const id of ['q-pamper','q-voeding','q-slaap','q-gewicht','q-temp','q-medicatie','sleep-stop','side-L','side-R','feed-done','feed-pause','feed-reset','feed-cancel','gear']) $(id).disabled = false;
+    banner('');
+    store.onChange((ev, s) => {
+      events = ev; loaded = true;
+      if (s) settings = { intervalMin: Number(s.intervalMin) || 180, sound: s.sound !== false, birthDate: s.birthDate || '', birthWeight: Number(s.birthWeight) || 0 };
+      $('sync').textContent = 'bijgewerkt ' + hhmm(new Date());
+      render();
+    });
+    try { await store.load(); }
+    catch (e) { loaded = true; banner(e.code === 'auth' ? 'GitHub weigert het token (' + e.message + '). Pas de koppeling aan via het tandwiel.' : 'Kan de repo niet lezen: ' + e.message, true); render(); }
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(() => { if (!document.hidden && !busy) store.refresh().catch(() => {}); }, 30000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && store) store.refresh().catch(() => {}); });
+  }
+  async function start() { render(); boot(); }
+  start();
+})();
+</script>
+</body>
+</html>
