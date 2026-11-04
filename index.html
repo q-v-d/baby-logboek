@@ -237,6 +237,16 @@
   .setup ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; }
   .setup code { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: 13px; }
   .sync { font-size: 12px; color: var(--muted); text-align: right; }
+  .routines { gap: 6px; }
+  .routines h3 { font-size: 17px; margin-bottom: 4px; }
+  .rrow { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); text-align: left; width: 100%; }
+  .rrow:first-of-type { border-top: 0; }
+  .rrow b { display: block; font-size: 15px; }
+  .rrow span { font-size: 13px; color: var(--muted); }
+  .chip { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); white-space: nowrap; }
+  .chip.done { background: var(--meta-soft); color: var(--meta); border-color: transparent; }
+  .chip.late { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
+  .chip.open { color: var(--accent); }
 </style>
 </head>
 <body>
@@ -314,6 +324,11 @@
       <div><span class="label">Slaapt sinds <span id="sleep-start"></span></span><br><strong class="num" id="sleep-dur">0 min</strong></div>
       <button class="done" id="sleep-stop" type="button">Wakker</button>
     </div>
+  </section>
+
+  <section class="card routines" id="routines" hidden>
+    <h3>Vandaag nog te doen</h3>
+    <div id="routine-list"></div>
   </section>
 
   <section class="quick" aria-label="Snel loggen">
@@ -412,7 +427,8 @@
 
   let store = null, myId = null, canWrite = null;
   let events = [];
-  let settings = { intervalMin: 180, sound: true, birthDate: '', birthWeight: 0 };
+  let settings = { intervalMin: 180, sound: true, birthDate: '', birthWeight: 0, tempTimes: ['09:00', '21:00'], vitTime: '09:00', vitNaam: 'Vitamine D' };
+  let routineChimed = {};
   let viewDay = dayKey(new Date());
   let tab = location.hash === '#overzicht' ? 'overzicht' : 'log';
   let loaded = false, loadTimer = null;
@@ -509,6 +525,7 @@
     $('sleeping').hidden = !s;
     if (s) { $('sleep-start').textContent = hhmm(new Date(s.ts)); $('sleep-dur').textContent = fmtDur(now - new Date(s.ts)); }
     $('q-slaap-txt').textContent = s ? 'Wakker' : 'Slaap';
+    renderRoutines(now);
 
     const lv = lastFeed();
     const tile = $('tile-voeding'), nx = $('next-voeding');
@@ -527,6 +544,47 @@
     } else nx.textContent = '';
   }
 
+  function routineItems() {
+    const today = dayKey(new Date());
+    const temps = events.filter(e => e.type === 'temp' && e.day === today).sort((a, b) => a.ts < b.ts ? -1 : 1);
+    const items = [];
+    const tt = (settings.tempTimes || []).filter(Boolean).slice().sort();
+    tt.forEach((t, i) => items.push({ key: 'temp' + i, type: 'temp', label: 'Temperatuur meten', time: t, done: temps[i] || null, value: temps[i] ? fmtTemp(temps[i].c) + ' om ' + hhmm(new Date(temps[i].ts)) : '' }));
+    if (settings.vitTime) {
+      const naam = settings.vitNaam || 'Vitamine D';
+      const v = events.find(e => e.type === 'medicatie' && e.day === today && (e.naam || '').toLowerCase().includes(naam.toLowerCase().split(' ')[0]));
+      items.push({ key: 'vit', type: 'medicatie', label: naam + ' geven', time: settings.vitTime, done: v || null, value: v ? (v.dosis ? v.dosis + ' om ' : 'om ') + hhmm(new Date(v.ts)) : '', naam });
+    }
+    return items.sort((a, b) => a.time < b.time ? -1 : 1);
+  }
+  function renderRoutines(now) {
+    const items = routineItems();
+    const box = $('routines'); box.hidden = !items.length || !store;
+    if (box.hidden) return;
+    const d = new Date(now); const today = dayKey(d);
+    const sig = today + '|' + Math.floor(now / 60000) + '|' + items.map(it => it.key + ':' + (it.done ? it.done.id : '') + it.time).join(',');
+    if (box.dataset.sig === sig) return; box.dataset.sig = sig;
+    const list = $('routine-list'); list.replaceChildren();
+    let openCount = 0;
+    for (const it of items) {
+      const [h, m] = it.time.split(':').map(Number);
+      const due = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m).getTime();
+      const late = !it.done && now > due + 60 * 60000;
+      const pending = !it.done && now >= due && !late;
+      if (!it.done) openCount++;
+      const row = el('button', 'rrow'); row.type = 'button';
+      const left = el('div'); left.appendChild(el('b', '', it.label));
+      left.appendChild(el('span', '', it.done ? it.value : 'gepland ' + it.time));
+      const chip = el('span', 'chip ' + (it.done ? 'done' : late ? 'late' : pending ? 'open' : ''), it.done ? 'gedaan' : late ? 'te laat' : pending ? 'nu' : it.time);
+      row.append(left, chip);
+      if (it.done) row.addEventListener('click', () => open(it.done.type, it.done));
+      else row.addEventListener('click', () => { if (it.type === 'medicatie') open('medicatie', null, it.naam); else open('temp'); });
+      list.appendChild(row);
+      const ck = today + '|' + it.key;
+      if (!it.done && now >= due && now - due < 120000 && !routineChimed[ck]) { routineChimed[ck] = true; chime(); toast(it.label + ' · ' + it.time); }
+    }
+    box.querySelector('h3').textContent = openCount ? 'Vandaag nog te doen' : 'Vandaag alles gedaan';
+  }
   function renderHeader() {
     const d = new Date();
     const bd = babyDay(dayKey(d));
@@ -830,7 +888,7 @@
   function showSheet() { $('scrim').hidden = false; $('sheet').hidden = false; }
   function close() { $('scrim').hidden = true; $('sheet').hidden = true; openSheet = null; }
 
-  function open(type, edit) {
+  function open(type, edit, presetNaam) {
     const now = new Date();
     const ed = edit || null;
     openSheet = {
@@ -926,7 +984,7 @@
     if (type === 'medicatie') {
       h.textContent = pre + 'Medicatie';
       const recent = [...new Set(events.filter(e => e.type === 'medicatie' && e.naam).map(e => e.naam))].slice(0, 6);
-      const naam = textInput(ed ? ed.naam : (recent[0] || ''), 'f-naam', 'bv. vitamine D');
+      const naam = textInput(ed ? ed.naam : (presetNaam || recent[0] || ''), 'f-naam', 'bv. vitamine D');
       const dosis = textInput(ed ? ed.dosis : '', 'f-dosis', 'bv. 1 druppel');
       const lastSame = () => events.find(e => e.type === 'medicatie' && e.naam === naam.value);
       const fillDosis = () => { const l = lastSame(); if (l && !dosis.value) dosis.value = l.dosis || ''; };
@@ -1002,6 +1060,13 @@
     fields.appendChild(field('Geboortedatum (voor "dag 0, 1, 2…")', bd));
     fields.appendChild(field('Geboortegewicht in gram', numInput(birthWeight || 0, 10, v => birthWeight = v, 'f-birthweight')));
     fields.appendChild(field('Herinnering: voeding om de … minuten (vanaf de start van de vorige)', numInput(interval, 15, v => interval = v, 'f-interval')));
+    let tempTimes = (settings.tempTimes || []).join(', '), vitTime = settings.vitTime || '', vitNaam = settings.vitNaam || 'Vitamine D';
+    const tIn = textInput(tempTimes, 'f-temptimes', 'bv. 09:00, 21:00'); tIn.addEventListener('input', () => tempTimes = tIn.value);
+    fields.appendChild(field('Temperatuur meten om (tijden, komma-gescheiden; leeg = geen herinnering)', tIn));
+    const vIn = textInput(vitTime, 'f-vittime', 'bv. 09:00'); vIn.addEventListener('input', () => vitTime = vIn.value);
+    fields.appendChild(field('Dagelijkse medicatie om (leeg = geen herinnering)', vIn));
+    const nIn = textInput(vitNaam, 'f-vitnaam', 'bv. Vitamine D'); nIn.addEventListener('input', () => vitNaam = nIn.value);
+    fields.appendChild(field('Naam van die medicatie', nIn));
     const lab = el('label', 'check'); const cb = el('input'); cb.type = 'checkbox'; cb.id = 'f-sound'; cb.checked = sound; cb.addEventListener('change', () => sound = cb.checked);
     lab.append(cb, document.createTextNode('Belletje laten horen als de pagina open staat')); fields.appendChild(lab);
     fields.appendChild(el('p', 'note', 'Een webpagina kan geen alarm op een vergrendelde telefoon laten afgaan. De aftelling bovenaan toont het tijdstip; zet daar zelf een wekker op als je zeker wil zijn.'));
@@ -1010,8 +1075,12 @@
     $('sheet-save').hidden = false; $('sheet-save').disabled = false; $('sheet-save').textContent = 'Bewaar';
     openSheet.save = async () => {
       if (interval < 30) { $('sheet-err').textContent = 'Kies minstens 30 minuten.'; $('sheet-err').hidden = false; return; }
+      const okTime = (t) => /^([01]?\d|2[0-3]):[0-5]\d$/.test(t);
+      const tts = tempTimes.split(',').map(x => x.trim()).filter(Boolean).map(x => x.length === 4 ? '0' + x : x);
+      const vt = vitTime.trim().length === 4 ? '0' + vitTime.trim() : vitTime.trim();
+      if (tts.some(x => !okTime(x)) || (vt && !okTime(vt))) { $('sheet-err').textContent = 'Schrijf tijden als 09:00 of 21:30.'; $('sheet-err').hidden = false; return; }
       $('sheet-save').disabled = true;
-      try { await store.saveSettings({ intervalMin: interval, sound, birthDate: birthDate || '', birthWeight: Math.round(birthWeight) || 0 }); close(); toast('Bewaard'); }
+      try { await store.saveSettings({ intervalMin: interval, sound, birthDate: birthDate || '', birthWeight: Math.round(birthWeight) || 0, tempTimes: tts, vitTime: vt, vitNaam: vitNaam.trim() || 'Vitamine D' }); close(); toast('Bewaard'); }
       catch (err) { $('sheet-save').disabled = false; writeFailed(err, 'Bewaren mislukt'); }
     };
     showSheet();
@@ -1154,7 +1223,7 @@
     banner('');
     store.onChange((ev, s) => {
       events = ev; loaded = true;
-      if (s) settings = { intervalMin: Number(s.intervalMin) || 180, sound: s.sound !== false, birthDate: s.birthDate || '', birthWeight: Number(s.birthWeight) || 0 };
+      if (s) settings = { intervalMin: Number(s.intervalMin) || 180, sound: s.sound !== false, birthDate: s.birthDate || '', birthWeight: Number(s.birthWeight) || 0, tempTimes: Array.isArray(s.tempTimes) ? s.tempTimes : ['09:00', '21:00'], vitTime: s.vitTime == null ? '09:00' : s.vitTime, vitNaam: s.vitNaam || 'Vitamine D' };
       $('sync').textContent = 'bijgewerkt ' + hhmm(new Date());
       render();
     });
