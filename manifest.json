@@ -1,6 +1,6 @@
 {
-  "name": "Baby Logboek",
-  "short_name": "Logboek",
+  "name": "Mauro’s logboek",
+  "short_name": "Mauro",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
