@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#f4f3f8">
+<meta name="theme-color" content="#f6f3ee">
 <title>Mauro’s logboek</title>
 <meta name="apple-mobile-web-app-title" content="Mauro">
 <link rel="manifest" href="manifest.json">
@@ -24,37 +24,37 @@
 <style>
   /* Layout: one phone-first column. Status strip, live banners, log buttons, then two tabs: Logboek (timeline per day) and Overzicht (charts + tables). Entries open in a bottom sheet. */
   :root {
-    --bg: #f4f3f8; --surface: #ffffff; --fg: #1f1d2e; --muted: #6f6b86; --line: #e3e0ed;
-    --accent: #5b4fcf; --accent-fg: #ffffff;
-    --pamper: #b7850f; --pamper-soft: #fbefcf; --pamper2: #7a5a0c;
-    --voeding: #cf4a70; --voeding-soft: #fbe2ea;
-    --slaap: #4a5cc2; --slaap-soft: #e2e6fb;
-    --meta: #2b8a7a; --meta-soft: #dcf2ee;
-    --danger: #c2403a; --danger-soft: #fde4e2;
-    --shadow: 0 10px 30px rgba(40, 32, 80, .12);
+    --bg: #f6f3ee; --surface: #fffdf9; --fg: #26262a; --muted: #6e6a60; --line: #e6e0d6;
+    --accent: #7f133b; --accent-fg: #ffffff;
+    --pamper: #c78d41; --pamper-soft: #f6e9d4; --pamper2: #7b774a;
+    --voeding: #b75d3b; --voeding-soft: #f5dfd3;
+    --slaap: #37545b; --slaap-soft: #dde6e8;
+    --meta: #7b774a; --meta-soft: #e9e8d9;
+    --danger: #b03a2c; --danger-soft: #f7dcd6;
+    --shadow: 0 10px 30px rgba(60, 40, 20, .14);
     --display: "Baloo 2", "Nunito", system-ui, sans-serif;
     --body: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #16151e; --surface: #211f2d; --fg: #eceaf4; --muted: #9c98b3; --line: #2f2d3f;
-      --accent: #8f85f0; --accent-fg: #16151e;
-      --pamper: #e3b23a; --pamper-soft: #3a2f12; --pamper2: #9a7420;
-      --voeding: #f07a9c; --voeding-soft: #3d1c28;
-      --slaap: #8b9bf2; --slaap-soft: #222848;
-      --meta: #5cc9b5; --meta-soft: #173430;
-      --danger: #f08078; --danger-soft: #42201f; --shadow: 0 10px 30px rgba(0,0,0,.45);
+      --bg: #1b1a18; --surface: #262421; --fg: #f0ece4; --muted: #a39d90; --line: #38352f;
+      --accent: #c9507f; --accent-fg: #1b1a18;
+      --pamper: #d9a35a; --pamper-soft: #3a2d18; --pamper2: #a29c66;
+      --voeding: #d47a58; --voeding-soft: #3f2419;
+      --slaap: #7fa0a8; --slaap-soft: #1f2f33;
+      --meta: #a29c66; --meta-soft: #2a2a1c;
+      --danger: #e07a6c; --danger-soft: #42201c; --shadow: 0 10px 30px rgba(0,0,0,.45);
       color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
-    --bg: #16151e; --surface: #211f2d; --fg: #eceaf4; --muted: #9c98b3; --line: #2f2d3f;
-    --accent: #8f85f0; --accent-fg: #16151e;
-    --pamper: #e3b23a; --pamper-soft: #3a2f12; --pamper2: #9a7420;
-    --voeding: #f07a9c; --voeding-soft: #3d1c28;
-    --slaap: #8b9bf2; --slaap-soft: #222848;
-    --meta: #5cc9b5; --meta-soft: #173430;
-    --danger: #f08078; --danger-soft: #42201f; --shadow: 0 10px 30px rgba(0,0,0,.45);
+    --bg: #1b1a18; --surface: #262421; --fg: #f0ece4; --muted: #a39d90; --line: #38352f;
+    --accent: #c9507f; --accent-fg: #1b1a18;
+    --pamper: #d9a35a; --pamper-soft: #3a2d18; --pamper2: #a29c66;
+    --voeding: #d47a58; --voeding-soft: #3f2419;
+    --slaap: #7fa0a8; --slaap-soft: #1f2f33;
+    --meta: #a29c66; --meta-soft: #2a2a1c;
+    --danger: #e07a6c; --danger-soft: #42201c; --shadow: 0 10px 30px rgba(0,0,0,.45);
     color-scheme: dark;
   }
 
@@ -187,7 +187,7 @@
   .note { font-size: 13px; color: var(--muted); padding: 10px 12px; border: 1px dashed var(--line); border-radius: 12px; }
   .note.warn { color: var(--danger); border-color: var(--danger); }
 
-  .scrim { position: fixed; inset: 0; background: rgba(20, 16, 40, .45); z-index: 20; }
+  .scrim { position: fixed; inset: 0; background: rgba(30, 22, 16, .45); z-index: 20; }
   .sheet {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; background: var(--surface); border-radius: 22px 22px 0 0; box-shadow: var(--shadow);
     padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
@@ -237,6 +237,9 @@
   .setup ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; }
   .setup code { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: 13px; }
   .sync { font-size: 12px; color: var(--muted); text-align: right; }
+  body.no-sleep .quick:not(.small) { grid-template-columns: repeat(2, 1fr); }
+  body.no-sleep #q-slaap, body.no-sleep #s-slaap-tile, body.no-sleep #ov-slaap { display: none !important; }
+  body.no-sleep .summary { grid-template-columns: repeat(2, 1fr); }
   .routines { gap: 6px; }
   .routines h3 { font-size: 17px; margin-bottom: 4px; }
   .rrow { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); text-align: left; width: 100%; }
@@ -249,7 +252,7 @@
   .chip.open { color: var(--accent); }
 </style>
 </head>
-<body>
+<body class="no-sleep">
 
 <div class="wrap">
   <header>
@@ -354,7 +357,7 @@
   <section class="summary" aria-label="Totalen van de dag" id="summary">
     <div class="tile"><span class="label">Pampers</span><div class="big num" id="s-pamper">0</div><small id="s-pamper-sub">–</small></div>
     <div class="tile"><span class="label">Voedingen</span><div class="big num" id="s-voeding">0</div><small id="s-voeding-sub">–</small></div>
-    <div class="tile"><span class="label">Slaap</span><div class="big num" id="s-slaap">0u</div><small id="s-slaap-sub">–</small></div>
+    <div class="tile" id="s-slaap-tile"><span class="label">Slaap</span><div class="big num" id="s-slaap">0u</div><small id="s-slaap-sub">–</small></div>
   </section>
 
   <div class="tabs" role="tablist">
@@ -427,7 +430,7 @@
 
   let store = null, myId = null, canWrite = null;
   let events = [];
-  let settings = { intervalMin: 180, sound: true, birthDate: '', birthWeight: 0, tempTimes: ['09:00', '21:00'], vitTime: '09:00', vitNaam: 'Vitamine D' };
+  let settings = { intervalMin: 180, sound: true, birthDate: '', birthWeight: 0, tempTimes: ['09:00', '21:00'], vitTime: '09:00', vitNaam: 'Vitamine D', sleep: false };
   let routineChimed = {};
   let viewDay = dayKey(new Date());
   let tab = location.hash === '#overzicht' ? 'overzicht' : 'log';
@@ -776,11 +779,12 @@
         dayRows(s => { const kl = [...new Set(events.filter(e => e.day === s.key && e.type === 'pamper' && e.kleur).map(e => e.kleur))]; return [dl(s.key), s.pampers, s.nat, s.vuil, kl.join(', ') || '–']; }))));
 
     // Slaap
-    v.appendChild(card('Slaap per dag', 'Totale slaap, geteld bij de dag waarop het dutje begon.',
+    const slaapCard = card('Slaap per dag', 'Totale slaap, geteld bij de dag waarop het dutje begon.',
       barChart(days, [{ color: 'var(--slaap)', values: stats.map(s => Math.round(s.sleepMs / 360000) / 10) }], { label: 'Slaap per dag', min: 8, fmt: (t) => t + 'u' }),
       null,
       table([{ h: 'Dag' }, { h: 'Slaap', num: true }, { h: 'Dutjes', num: true }, { h: 'Gemiddeld', num: true }],
-        dayRows(s => [dl(s.key), s.sleeps ? fmtH(s.sleepMs) : '–', s.sleeps || '–', s.sleeps ? fmtDur(s.sleepMs / s.sleeps) : '–']))));
+        dayRows(s => [dl(s.key), s.sleeps ? fmtH(s.sleepMs) : '–', s.sleeps || '–', s.sleeps ? fmtDur(s.sleepMs / s.sleeps) : '–'])));
+    slaapCard.id = 'ov-slaap'; v.appendChild(slaapCard);
 
     // Temperatuur
     const temps = events.filter(e => e.type === 'temp').sort((a, b) => a.ts < b.ts ? 1 : -1);
@@ -1067,6 +1071,9 @@
     fields.appendChild(field('Dagelijkse medicatie om (leeg = geen herinnering)', vIn));
     const nIn = textInput(vitNaam, 'f-vitnaam', 'bv. Vitamine D'); nIn.addEventListener('input', () => vitNaam = nIn.value);
     fields.appendChild(field('Naam van die medicatie', nIn));
+    let sleep = settings.sleep;
+    const labS = el('label', 'check'); const cbS = el('input'); cbS.type = 'checkbox'; cbS.id = 'f-sleep'; cbS.checked = sleep; cbS.addEventListener('change', () => sleep = cbS.checked);
+    labS.append(cbS, document.createTextNode('Slaap bijhouden (knop, dagtotaal en grafiek tonen)')); fields.appendChild(labS);
     const lab = el('label', 'check'); const cb = el('input'); cb.type = 'checkbox'; cb.id = 'f-sound'; cb.checked = sound; cb.addEventListener('change', () => sound = cb.checked);
     lab.append(cb, document.createTextNode('Belletje laten horen als de pagina open staat')); fields.appendChild(lab);
     fields.appendChild(el('p', 'note', 'Een webpagina kan geen alarm op een vergrendelde telefoon laten afgaan. De aftelling bovenaan toont het tijdstip; zet daar zelf een wekker op als je zeker wil zijn.'));
@@ -1080,7 +1087,7 @@
       const vt = vitTime.trim().length === 4 ? '0' + vitTime.trim() : vitTime.trim();
       if (tts.some(x => !okTime(x)) || (vt && !okTime(vt))) { $('sheet-err').textContent = 'Schrijf tijden als 09:00 of 21:30.'; $('sheet-err').hidden = false; return; }
       $('sheet-save').disabled = true;
-      try { await store.saveSettings({ intervalMin: interval, sound, birthDate: birthDate || '', birthWeight: Math.round(birthWeight) || 0, tempTimes: tts, vitTime: vt, vitNaam: vitNaam.trim() || 'Vitamine D' }); close(); toast('Bewaard'); }
+      try { await store.saveSettings({ intervalMin: interval, sound, birthDate: birthDate || '', birthWeight: Math.round(birthWeight) || 0, tempTimes: tts, vitTime: vt, vitNaam: vitNaam.trim() || 'Vitamine D', sleep }); close(); toast('Bewaard'); }
       catch (err) { $('sheet-save').disabled = false; writeFailed(err, 'Bewaren mislukt'); }
     };
     showSheet();
@@ -1223,7 +1230,8 @@
     banner('');
     store.onChange((ev, s) => {
       events = ev; loaded = true;
-      if (s) settings = { intervalMin: Number(s.intervalMin) || 180, sound: s.sound !== false, birthDate: s.birthDate || '', birthWeight: Number(s.birthWeight) || 0, tempTimes: Array.isArray(s.tempTimes) ? s.tempTimes : ['09:00', '21:00'], vitTime: s.vitTime == null ? '09:00' : s.vitTime, vitNaam: s.vitNaam || 'Vitamine D' };
+      if (s) settings = { intervalMin: Number(s.intervalMin) || 180, sound: s.sound !== false, birthDate: s.birthDate || '', birthWeight: Number(s.birthWeight) || 0, tempTimes: Array.isArray(s.tempTimes) ? s.tempTimes : ['09:00', '21:00'], vitTime: s.vitTime == null ? '09:00' : s.vitTime, vitNaam: s.vitNaam || 'Vitamine D', sleep: s.sleep === true };
+      document.body.classList.toggle('no-sleep', !settings.sleep);
       $('sync').textContent = 'bijgewerkt ' + hhmm(new Date());
       render();
     });
