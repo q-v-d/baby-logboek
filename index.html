@@ -126,7 +126,8 @@
   .quick .pamper { background: var(--pamper-soft); color: var(--pamper); }
   .quick .voeding { background: var(--voeding-soft); color: var(--voeding); }
   .quick .slaap { background: var(--slaap-soft); color: var(--slaap); }
-  .quick.small button { padding: 10px 8px; grid-auto-flow: column; align-items: center; gap: 8px; font-size: 14px; background: var(--surface); border: 1px solid var(--line); color: var(--meta); }
+  .quick.small { grid-template-columns: repeat(4, 1fr); }
+  .quick.small button { padding: 10px 6px; grid-auto-flow: column; align-items: center; gap: 6px; font-size: 13px; background: var(--surface); border: 1px solid var(--line); color: var(--meta); }
   .quick.small svg { width: 20px; height: 20px; }
   .quick button:disabled { opacity: .5; cursor: not-allowed; }
 
@@ -151,6 +152,7 @@
   .row.voeding .bar { background: var(--voeding); }
   .row.slaap .bar { background: var(--slaap); }
   .row.gewicht .bar, .row.temp .bar, .row.medicatie .bar { background: var(--meta); }
+  .row.bad .bar { background: var(--slaap); }
   .row .time { font-weight: 700; }
   .row .what { min-width: 0; }
   .row .what b { display: block; }
@@ -197,6 +199,7 @@
   .sheet h2 { font-size: 24px; }
   .sheet h2.pamper { color: var(--pamper); } .sheet h2.voeding { color: var(--voeding); } .sheet h2.slaap { color: var(--slaap); }
   .sheet h2.gewicht, .sheet h2.temp, .sheet h2.medicatie { color: var(--meta); }
+  .sheet h2.bad { color: var(--slaap); }
   .field { display: grid; gap: 6px; }
   .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
   .seg button { border: 1px solid var(--line); border-radius: 12px; padding: 11px 6px; font-weight: 700; }
@@ -351,6 +354,7 @@
   <section class="quick small" aria-label="Ook loggen">
     <button id="q-gewicht" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4"/><path d="M4 7h16"/><path d="M6 7l-3 7a3.5 3.5 0 0 0 7 0L7 7"/><path d="M18 7l-3 7a3.5 3.5 0 0 0 7 0l-3-7"/><path d="M12 7v14M9 21h6"/></svg>Gewicht</button>
     <button id="q-temp" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v8"/></svg>Temp</button>
+    <button id="q-bad" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16v3a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/><path d="M6 12V6a2 2 0 0 1 4 0"/><path d="M7 21v-2M17 21v-2"/></svg>Bad</button>
     <button id="q-medicatie" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="9" width="18" height="6" rx="3" transform="rotate(-45 12 12)"/><path d="M8.5 15.5l7-7"/></svg>Medicatie</button>
   </section>
 
@@ -430,7 +434,7 @@
 
   let store = null, myId = null, canWrite = null;
   let events = [];
-  let settings = { intervalMin: 180, sound: true, birthDate: '', birthWeight: 0, tempTimes: ['09:00', '21:00'], vitTime: '09:00', vitNaam: 'Vitamine D', sleep: false };
+  let settings = { intervalMin: 180, sound: true, birthDate: '', birthWeight: 0, tempTimes: [], vitTime: '09:00', vitNaam: 'Vitamine D', sleep: false, bathDays: 7 };
   let routineChimed = {};
   let viewDay = dayKey(new Date());
   let tab = location.hash === '#overzicht' ? 'overzicht' : 'log';
@@ -504,6 +508,7 @@
     }
     if (e.type === 'temp') return { title: 'Temperatuur · ' + fmtTemp(e.c), sub: e.c >= 38 ? 'koorts' : e.c >= 37.5 ? 'verhoging' : '' };
     if (e.type === 'medicatie') return { title: 'Medicatie · ' + (e.naam || ''), sub: e.dosis || '' };
+    if (e.type === 'bad') return { title: 'Badje', sub: e.c != null ? 'water ' + fmtTemp(e.c) : '' };
     return { title: e.type, sub: '' };
   }
 
@@ -558,7 +563,16 @@
       const v = events.find(e => e.type === 'medicatie' && e.day === today && (e.naam || '').toLowerCase().includes(naam.toLowerCase().split(' ')[0]));
       items.push({ key: 'vit', type: 'medicatie', label: naam + ' geven', time: settings.vitTime, done: v || null, value: v ? (v.dosis ? v.dosis + ' om ' : 'om ') + hhmm(new Date(v.ts)) : '', naam });
     }
-    return items.sort((a, b) => a.time < b.time ? -1 : 1);
+    items.sort((a, b) => a.time < b.time ? -1 : 1);
+    if (settings.bathDays > 0) {
+      const lastBath = events.find(e => e.type === 'bad');
+      const daysAgo = lastBath ? Math.round((parseDay(today) - parseDay(lastBath.day)) / 86400000) : null;
+      const todayBath = lastBath && lastBath.day === today;
+      const due = daysAgo == null || daysAgo >= settings.bathDays;
+      if (todayBath || due) items.push({ key: 'bad', type: 'bad', label: 'Badje', time: '', weekly: true, done: todayBath ? lastBath : null,
+        value: todayBath ? 'vandaag om ' + hhmm(new Date(lastBath.ts)) : '', hint: daysAgo == null ? 'nog geen badje gelogd' : 'laatste ' + daysAgo + ' dagen geleden', late: daysAgo != null && daysAgo > settings.bathDays });
+    }
+    return items;
   }
   function renderRoutines(now) {
     const items = routineItems();
@@ -570,21 +584,21 @@
     const list = $('routine-list'); list.replaceChildren();
     let openCount = 0;
     for (const it of items) {
-      const [h, m] = it.time.split(':').map(Number);
+      const [h, m] = (it.weekly ? '00:00' : it.time).split(':').map(Number);
       const due = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m).getTime();
-      const late = !it.done && now > due + 60 * 60000;
-      const pending = !it.done && now >= due && !late;
+      const late = !it.done && (it.weekly ? it.late : now > due + 60 * 60000);
+      const pending = !it.done && (it.weekly ? !it.late : now >= due && !late);
       if (!it.done) openCount++;
       const row = el('button', 'rrow'); row.type = 'button';
       const left = el('div'); left.appendChild(el('b', '', it.label));
-      left.appendChild(el('span', '', it.done ? it.value : 'gepland ' + it.time));
-      const chip = el('span', 'chip ' + (it.done ? 'done' : late ? 'late' : pending ? 'open' : ''), it.done ? 'gedaan' : late ? 'te laat' : pending ? 'nu' : it.time);
+      left.appendChild(el('span', '', it.done ? it.value : it.weekly ? it.hint : 'gepland ' + it.time));
+      const chip = el('span', 'chip ' + (it.done ? 'done' : late ? 'late' : pending ? 'open' : ''), it.done ? 'gedaan' : late ? 'te laat' : pending ? (it.weekly ? 'deze week' : 'nu') : it.time);
       row.append(left, chip);
       if (it.done) row.addEventListener('click', () => open(it.done.type, it.done));
-      else row.addEventListener('click', () => { if (it.type === 'medicatie') open('medicatie', null, it.naam); else open('temp'); });
+      else row.addEventListener('click', () => { if (it.type === 'medicatie') open('medicatie', null, it.naam); else open(it.type); });
       list.appendChild(row);
       const ck = today + '|' + it.key;
-      if (!it.done && now >= due && now - due < 120000 && !routineChimed[ck]) { routineChimed[ck] = true; chime(); toast(it.label + ' · ' + it.time); }
+      if (!it.weekly && !it.done && now >= due && now - due < 120000 && !routineChimed[ck]) { routineChimed[ck] = true; chime(); toast(it.label + ' · ' + it.time); }
     }
     box.querySelector('h3').textContent = openCount ? 'Vandaag nog te doen' : 'Vandaag alles gedaan';
   }
@@ -723,6 +737,25 @@
     days.forEach((d, i) => svg.appendChild(sv('text', { x: x(i), y: H - 7, 'text-anchor': 'middle', class: 'svgtxt' }, shortDate(d))));
     return svg;
   }
+  function lineChart2(days, series, opts) {
+    const W = 360, H = 180, padL = 36, padR = 10, padT = 14, padB = 24;
+    const svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': opts.label });
+    const vals = series.flatMap(s => s.pts.filter(v => v != null));
+    if (!vals.length) return svg;
+    let lo = 0, hi = Math.max(...vals);
+    if (opts.minSpan && hi - lo < opts.minSpan) hi = lo + opts.minSpan;
+    hi += (hi - lo) * .15;
+    const y = (v) => padT + (H - padT - padB) * (1 - (v - lo) / (hi - lo));
+    const slot = (W - padL - padR) / days.length; const x = (i) => padL + slot * i + slot / 2;
+    for (const t of niceTicks(lo, hi, 4)) { svg.appendChild(sv('line', { x1: padL, x2: W - padR, y1: y(t), y2: y(t), class: 'grid' })); svg.appendChild(sv('text', { x: padL - 4, y: y(t) + 4, 'text-anchor': 'end', class: 'svgtxt' }, opts.fmt(t))); }
+    for (const s of series) {
+      const pts = s.pts.map((v, i) => v == null ? null : [x(i), y(v)]).filter(Boolean);
+      if (pts.length > 1) svg.appendChild(sv('polyline', { points: pts.map(p => p.join(',')).join(' '), fill: 'none', stroke: s.color, 'stroke-width': 2.5, 'stroke-linejoin': 'round' }));
+      s.pts.forEach((v, i) => { if (v != null) svg.appendChild(sv('circle', { cx: x(i), cy: y(v), r: 3.5, fill: s.color })); });
+    }
+    days.forEach((d, i) => svg.appendChild(sv('text', { x: x(i), y: H - 7, 'text-anchor': 'middle', class: 'svgtxt' }, shortDate(d))));
+    return svg;
+  }
   function niceSteps(max, n) { const raw = max / n; const p = Math.pow(10, Math.floor(Math.log10(raw))); const s = [1, 2, 2.5, 5, 10].map(m => m * p).find(v => v >= raw); const top = Math.ceil(max / s) * s; const ticks = []; for (let t = 0; t <= top + 1e-9; t += s) ticks.push(Math.round(t * 100) / 100); return { max: top, ticks }; }
   function niceTicks(lo, hi, n) { const raw = (hi - lo) / n; const p = Math.pow(10, Math.floor(Math.log10(raw))); const s = [1, 2, 2.5, 5, 10].map(m => m * p).find(v => v >= raw); const ticks = []; for (let t = Math.ceil(lo / s) * s; t <= hi + 1e-9; t += s) ticks.push(Math.round(t * 100) / 100); return ticks; }
 
@@ -770,6 +803,33 @@
       [['var(--voeding)', 'borst'], ['var(--voeding-soft)', 'fles']],
       table([{ h: 'Dag' }, { h: 'Totaal', num: true }, { h: 'Borst', num: true }, { h: 'Min. borst', num: true }, { h: 'Fles', num: true }, { h: 'ml', num: true }],
         dayRows(s => [dl(s.key), s.feeds, s.borst, s.borstMin || '–', s.fles || '–', s.ml || '–']))));
+
+    // Voedingsinterval: tijd tussen de start van opeenvolgende voedingen
+    const feedsAsc = events.filter(e => e.type === 'voeding').slice().sort((a, b) => a.ts < b.ts ? -1 : 1);
+    const gaps = [];
+    for (let i = 1; i < feedsAsc.length; i++) {
+      const t0 = new Date(feedsAsc[i - 1].ts), t1 = new Date(feedsAsc[i].ts); const min = (t1 - t0) / 60000;
+      if (min <= 0 || min > 12 * 60) continue;
+      const h = t0.getHours(); gaps.push({ day: feedsAsc[i].day, min, night: h >= 22 || h < 7 });
+    }
+    const med = (a) => { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+    const avg = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+    const fm = (m) => m == null ? '–' : fmtDur(m * 60000);
+    if (gaps.length) {
+      const all = gaps.map(g => g.min), dayG = gaps.filter(g => !g.night).map(g => g.min), nightG = gaps.filter(g => g.night).map(g => g.min);
+      const tot = table([{ h: '' }, { h: 'Gemiddeld', num: true }, { h: 'Mediaan', num: true }, { h: 'Aantal', num: true }], [
+        { cells: ['Totaal', fm(avg(all)), fm(med(all)), all.length] },
+        { cells: ['Dag (07–22u)', fm(avg(dayG)), fm(med(dayG)), dayG.length] },
+        { cells: ['Nacht (22–07u)', fm(avg(nightG)), fm(med(nightG)), nightG.length] }]);
+      const perDay = stats.map(s => { const g = gaps.filter(x => x.day === s.key); return { d: avg(g.filter(x => !x.night).map(x => x.min)), n: avg(g.filter(x => x.night).map(x => x.min)), md: med(g.map(x => x.min)), all: g.map(x => x.min) }; });
+      const toH = (m) => m == null ? null : Math.round(m / 6) / 10;
+      const chart = lineChart2(days, [{ color: 'var(--voeding)', pts: perDay.map(p => toH(p.d)) }, { color: 'var(--slaap)', pts: perDay.map(p => toH(p.n)) }], { fmt: (t) => t + 'u', label: 'Gemiddelde tijd tussen voedingen per dag', minSpan: 2 });
+      const c = card('Tijd tussen voedingen', 'Van start tot start van de volgende voeding; de nacht loopt van 22u tot 7u, ingedeeld op het begin van het interval.', chart,
+        [['var(--voeding)', 'dag'], ['var(--slaap)', 'nacht']], tot);
+      c.appendChild(table([{ h: 'Dag' }, { h: 'Gem. dag', num: true }, { h: 'Gem. nacht', num: true }, { h: 'Mediaan', num: true }, { h: 'Kortste', num: true }, { h: 'Langste', num: true }],
+        stats.slice().reverse().map((s, i) => { const p = perDay[stats.length - 1 - i]; return { today: s.key === today, cells: [dl(s.key), fm(p.d), fm(p.n), fm(p.md), p.all.length ? fm(Math.min(...p.all)) : '–', p.all.length ? fm(Math.max(...p.all)) : '–'] }; })));
+      v.appendChild(c);
+    }
 
     // Pampers
     v.appendChild(card('Pampers per dag', 'Natte en vuile luiers (een pamper met beide telt bij allebei).',
@@ -985,6 +1045,11 @@
       openSheet.c = ed ? Number(ed.c) : 37.0;
       fields.appendChild(field('Temperatuur in °C', numInput(openSheet.c, 0.1, v => openSheet.c = v, 'f-c', true)));
     }
+    if (type === 'bad') {
+      h.textContent = pre + 'Badje';
+      openSheet.c = ed && ed.c != null ? Number(ed.c) : 0;
+      fields.appendChild(field('Watertemperatuur in °C (optioneel)', numInput(openSheet.c, 0.5, v => openSheet.c = v, 'f-bc', true)));
+    }
     if (type === 'medicatie') {
       h.textContent = pre + 'Medicatie';
       const recent = [...new Set(events.filter(e => e.type === 'medicatie' && e.naam).map(e => e.naam))].slice(0, 6);
@@ -1044,6 +1109,7 @@
     if (openSheet.type === 'gewicht') { if (!(openSheet.g > 500 && openSheet.g < 30000)) return fail('Vul een gewicht in gram in (bv. 3510).'); doc.g = Math.round(openSheet.g); }
     if (openSheet.type === 'temp') { if (!(openSheet.c >= 34 && openSheet.c <= 43)) return fail('Vul een temperatuur tussen 34 en 43 °C in.'); doc.c = Math.round(openSheet.c * 10) / 10; }
     if (openSheet.type === 'medicatie') { doc.naam = $('f-naam').value.trim(); doc.dosis = $('f-dosis').value.trim(); if (!doc.naam) return fail('Vul in welk middel je gaf.'); }
+    if (openSheet.type === 'bad') { if (openSheet.c) doc.c = Math.round(openSheet.c * 10) / 10; }
     $('sheet-save').disabled = true;
     await guarded(async () => {
       try {
@@ -1066,7 +1132,9 @@
     fields.appendChild(field('Herinnering: voeding om de … minuten (vanaf de start van de vorige)', numInput(interval, 15, v => interval = v, 'f-interval')));
     let tempTimes = (settings.tempTimes || []).join(', '), vitTime = settings.vitTime || '', vitNaam = settings.vitNaam || 'Vitamine D';
     const tIn = textInput(tempTimes, 'f-temptimes', 'bv. 09:00, 21:00'); tIn.addEventListener('input', () => tempTimes = tIn.value);
-    fields.appendChild(field('Temperatuur meten om (tijden, komma-gescheiden; leeg = geen herinnering)', tIn));
+    fields.appendChild(field('Temperatuur meten om (optioneel; tijden, komma-gescheiden; leeg = geen herinnering)', tIn));
+    let bathDays = settings.bathDays;
+    fields.appendChild(field('Badje om de … dagen (0 = geen herinnering)', numInput(bathDays, 1, v => bathDays = v, 'f-bathdays')));
     const vIn = textInput(vitTime, 'f-vittime', 'bv. 09:00'); vIn.addEventListener('input', () => vitTime = vIn.value);
     fields.appendChild(field('Dagelijkse medicatie om (leeg = geen herinnering)', vIn));
     const nIn = textInput(vitNaam, 'f-vitnaam', 'bv. Vitamine D'); nIn.addEventListener('input', () => vitNaam = nIn.value);
@@ -1087,7 +1155,7 @@
       const vt = vitTime.trim().length === 4 ? '0' + vitTime.trim() : vitTime.trim();
       if (tts.some(x => !okTime(x)) || (vt && !okTime(vt))) { $('sheet-err').textContent = 'Schrijf tijden als 09:00 of 21:30.'; $('sheet-err').hidden = false; return; }
       $('sheet-save').disabled = true;
-      try { await store.saveSettings({ intervalMin: interval, sound, birthDate: birthDate || '', birthWeight: Math.round(birthWeight) || 0, tempTimes: tts, vitTime: vt, vitNaam: vitNaam.trim() || 'Vitamine D', sleep }); close(); toast('Bewaard'); }
+      try { await store.saveSettings({ intervalMin: interval, sound, birthDate: birthDate || '', birthWeight: Math.round(birthWeight) || 0, tempTimes: tts, vitTime: vt, vitNaam: vitNaam.trim() || 'Vitamine D', sleep, bathDays: Math.round(bathDays) || 0 }); close(); toast('Bewaard'); }
       catch (err) { $('sheet-save').disabled = false; writeFailed(err, 'Bewaren mislukt'); }
     };
     showSheet();
@@ -1101,6 +1169,7 @@
   $('q-gewicht').addEventListener('click', () => open('gewicht'));
   $('q-temp').addEventListener('click', () => open('temp'));
   $('q-medicatie').addEventListener('click', () => open('medicatie'));
+  $('q-bad').addEventListener('click', () => open('bad'));
   $('sleep-stop').addEventListener('click', stopSleep);
   $('side-L').addEventListener('click', () => toggleSide('L'));
   $('side-R').addEventListener('click', () => toggleSide('R'));
@@ -1124,7 +1193,7 @@
 
   function setWritable(w) {
     canWrite = w;
-    for (const id of ['q-pamper','q-voeding','q-slaap','q-gewicht','q-temp','q-medicatie','sleep-stop','side-L','side-R','feed-done','feed-pause','feed-reset','feed-cancel','gear']) $(id).disabled = w === false;
+    for (const id of ['q-pamper','q-voeding','q-slaap','q-gewicht','q-temp','q-medicatie','q-bad','sleep-stop','side-L','side-R','feed-done','feed-pause','feed-reset','feed-cancel','gear']) $(id).disabled = w === false;
     if (w === false) banner('Je kan dit logboek bekijken maar niet aanvullen. Vraag de eigenaar om je als bewerker toe te voegen.', true);
   }
 
@@ -1226,11 +1295,11 @@
     if (!cfg) { loaded = true; setWritable(false); banner(''); $('setup').hidden = false; render(); return; }
     myId = cfg.name; $('who').textContent = 'Ingelogd als ' + cfg.name;
     store = makeStore(cfg);
-    canWrite = null; for (const id of ['q-pamper','q-voeding','q-slaap','q-gewicht','q-temp','q-medicatie','sleep-stop','side-L','side-R','feed-done','feed-pause','feed-reset','feed-cancel','gear']) $(id).disabled = false;
+    canWrite = null; for (const id of ['q-pamper','q-voeding','q-slaap','q-gewicht','q-temp','q-medicatie','q-bad','sleep-stop','side-L','side-R','feed-done','feed-pause','feed-reset','feed-cancel','gear']) $(id).disabled = false;
     banner('');
     store.onChange((ev, s) => {
       events = ev; loaded = true;
-      if (s) settings = { intervalMin: Number(s.intervalMin) || 180, sound: s.sound !== false, birthDate: s.birthDate || '', birthWeight: Number(s.birthWeight) || 0, tempTimes: Array.isArray(s.tempTimes) ? s.tempTimes : ['09:00', '21:00'], vitTime: s.vitTime == null ? '09:00' : s.vitTime, vitNaam: s.vitNaam || 'Vitamine D', sleep: s.sleep === true };
+      if (s) settings = { intervalMin: Number(s.intervalMin) || 180, sound: s.sound !== false, birthDate: s.birthDate || '', birthWeight: Number(s.birthWeight) || 0, tempTimes: Array.isArray(s.tempTimes) ? s.tempTimes : [], vitTime: s.vitTime == null ? '09:00' : s.vitTime, vitNaam: s.vitNaam || 'Vitamine D', sleep: s.sleep === true, bathDays: s.bathDays == null ? 7 : Number(s.bathDays) || 0 };
       document.body.classList.toggle('no-sleep', !settings.sleep);
       $('sync').textContent = 'bijgewerkt ' + hhmm(new Date());
       render();
