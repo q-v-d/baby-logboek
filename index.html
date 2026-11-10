@@ -421,7 +421,7 @@
   const DAYS = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
   const MONTHS = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
   const SIDE = { L: 'links', R: 'rechts', beide: 'links + rechts' };
-  const KLEUR = { zwart: 'zwart', bruin: 'bruin', groen: 'groen', geel: 'geel' };
+  const KLEUR = { zwart: 'zwart', bruin: 'bruin', groen: 'groen', geel: 'geel', oranje: 'oranje' };
   const shortDate = (key) => { const d = parseDay(key); return d.getDate() + '/' + (d.getMonth() + 1); };
   const dayTitle = (key) => {
     const today = dayKey(new Date());
@@ -960,7 +960,7 @@
       sub: ed ? ed.sub : (type === 'pamper' ? 'nat' : 'borst'),
       side: ed && ed.side ? ed.side : (suggestedSide() || 'L'),
       ml: ed ? (Number(ed.ml) || 0) : 0,
-      kleur: ed && ed.kleur ? ed.kleur : '',
+      kleur: ed ? (ed.kleur || '') : 'oranje',
       lMin: ed && ed.l != null ? Math.round(ed.l / 60) : 0, rMin: ed && ed.r != null ? Math.round(ed.r / 60) : 0,
       firstSide: ed ? ed.firstSide || '' : '', lastSide: ed ? ed.lastSide || '' : '',
       timer: !!(ed && (ed.l != null || ed.r != null)),
@@ -982,7 +982,7 @@
       const kleurBox = el('div');
       const renderKleur = () => {
         kleurBox.replaceChildren();
-        if (openSheet.sub === 'vuil' || openSheet.sub === 'beide') kleurBox.appendChild(field('Kleur stoelgang', seg([['zwart','Zwart'],['bruin','Bruin'],['groen','Groen'],['geel','Geel']], openSheet.kleur, v => openSheet.kleur = v)));
+        if (openSheet.sub === 'vuil' || openSheet.sub === 'beide') kleurBox.appendChild(field('Kleur stoelgang', seg([['oranje','Oranje'],['geel','Geel'],['groen','Groen'],['bruin','Bruin'],['zwart','Zwart']], openSheet.kleur, v => openSheet.kleur = v)));
       };
       fields.appendChild(field('Wat zat erin?', seg([['nat','Nat'],['vuil','Vuil'],['beide','Beide'],['droog','Droog']], openSheet.sub, v => { openSheet.sub = v; renderKleur(); })));
       fields.appendChild(kleurBox); renderKleur();
