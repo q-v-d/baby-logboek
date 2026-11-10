@@ -216,6 +216,8 @@
   .start.suggest { border-color: var(--voeding); background: var(--voeding-soft); color: var(--voeding); }
   .start.suggest small { color: var(--voeding); }
   .linkbtn { color: var(--accent); font-weight: 700; font-size: 14px; text-decoration: underline; justify-self: start; }
+  .prevfeed { background: var(--voeding-soft); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; font-size: 14px; }
+  .prevfeed b { color: var(--voeding); }
   .ml { display: flex; align-items: center; gap: 8px; }
   .ml input { width: 100%; }
   .ml button { border: 1px solid var(--line); border-radius: 12px; width: 48px; height: 48px; font-size: 22px; font-weight: 700; flex: none; }
@@ -1030,14 +1032,25 @@
             $('sheet-save').hidden = false;
           } else if (!openSheet.manual) {
             const sug = suggestedSide();
+            const prev = lastBreastFeed();
+            if (prev) {
+              const parts = [hhmm(new Date(prev.ts))];
+              if (prev.l != null || prev.r != null) parts.push('L ' + Math.round((prev.l || 0) / 60) + ' min · R ' + Math.round((prev.r || 0) / 60) + ' min');
+              const ls = lastSideUsed(prev);
+              const pv = el('div', 'prevfeed');
+              pv.appendChild(el('span', 'label', 'Vorige borstvoeding'));
+              pv.appendChild(el('div', '', parts.join(' · ')));
+              if (ls) pv.appendChild(el('b', '', 'Laatst gebruikt: ' + SIDE[ls] + ' → nu starten met ' + SIDE[ls]));
+              detail.appendChild(pv);
+            }
             const grid = el('div', 'startgrid');
             for (const s of ['L', 'R']) {
               const b = el('button', 'start' + (sug === s ? ' suggest' : '')); b.type = 'button';
-              b.innerHTML = '<span>Start ' + SIDE[s] + '</span><small>' + (sug === s ? 'hier eindigde de vorige voeding' : '') + '</small>';
+              b.innerHTML = '<span>Start ' + SIDE[s] + '</span><small>' + (sug === s ? 'laatst gebruikt · aan de beurt' : (sug ? 'de andere' : '')) + '</small>';
               b.addEventListener('click', () => startFeed(s));
               grid.appendChild(b);
             }
-            detail.appendChild(field('Timer · begin met de borst waar je vorige keer eindigde', grid));
+            detail.appendChild(field('Timer', grid));
             const m = el('button', 'linkbtn', 'Of invoeren zonder timer'); m.type = 'button';
             m.addEventListener('click', () => { openSheet.manual = true; renderDetail(); });
             detail.appendChild(m); $('sheet-save').hidden = true;
