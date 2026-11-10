@@ -181,6 +181,12 @@
   td.n, th.n { text-align: right; padding-right: 0; padding-left: 8px; }
   tr:last-child td { border-bottom: 0; }
   td.today { font-weight: 700; }
+  td.n { padding-left: 14px; }
+  .dots { display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; max-width: 110px; }
+  td.dotcell, th.dotcell { padding-left: 18px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,.15); }
+  .dot.oranje { background: #e3842d; } .dot.geel { background: #e6c348; } .dot.groen { background: #6b8f3a; } .dot.bruin { background: #7a4b24; } .dot.zwart { background: #2a2521; }
+  .legend .dot { margin-right: 4px; vertical-align: -2px; }
   .svgtxt { font-family: var(--body); font-size: 11px; fill: var(--muted); }
   .svgval { font-family: var(--body); font-size: 11px; font-weight: 700; fill: var(--fg); }
   .grid { stroke: var(--line); stroke-width: 1; }
@@ -673,6 +679,11 @@
       key, pampers: pampers.length,
       nat: pampers.filter(e => e.sub === 'nat' || e.sub === 'beide').length,
       vuil: pampers.filter(e => e.sub === 'vuil' || e.sub === 'beide').length,
+      alleenNat: pampers.filter(e => e.sub === 'nat').length,
+      beide: pampers.filter(e => e.sub === 'beide').length,
+      alleenVuil: pampers.filter(e => e.sub === 'vuil').length,
+      droog: pampers.filter(e => e.sub === 'droog').length,
+      kleuren: pampers.filter(e => e.kleur).map(e => e.kleur),
       feeds: feeds.length, borst: breast.length,
       borstMin: Math.round(breast.reduce((a, e) => a + feedMinutes(e, now), 0)),
       fles: feeds.filter(e => e.sub === 'fles').length,
@@ -761,9 +772,9 @@
 
   function table(cols, rows) {
     const wrap = el('div', 'tablewrap'); const t = el('table'); const thead = el('thead'); const tr = el('tr');
-    cols.forEach(c => { const th = el('th', c.num ? 'n' : '', c.h); tr.appendChild(th); }); thead.appendChild(tr); t.appendChild(thead);
+    cols.forEach(c => { const th = el('th', (c.num ? 'n' : '') + (c.cls ? ' ' + c.cls : ''), c.h); tr.appendChild(th); }); thead.appendChild(tr); t.appendChild(thead);
     const tb = el('tbody');
-    rows.forEach(r => { const tr = el('tr'); cols.forEach((c, i) => { const td = el('td', (c.num ? 'n' : '') + (r.today && i === 0 ? ' today' : ''), r.cells[i]); tr.appendChild(td); }); tb.appendChild(tr); });
+    rows.forEach(r => { const tr = el('tr'); cols.forEach((c, i) => { const v = r.cells[i]; const td = el('td', (c.num ? 'n' : '') + (c.cls ? ' ' + c.cls : '') + (r.today && i === 0 ? ' today' : '')); if (v instanceof Node) td.appendChild(v); else td.textContent = v; tr.appendChild(td); }); tb.appendChild(tr); });
     t.appendChild(tb); wrap.appendChild(t); return wrap;
   }
   function card(title, sub, chart, legend, tbl) {
@@ -832,11 +843,25 @@
     }
 
     // Pampers
-    v.appendChild(card('Pampers per dag', 'Natte en vuile luiers (een pamper met beide telt bij allebei).',
-      barChart(days, [{ color: 'var(--pamper)', values: stats.map(s => s.nat) }, { color: 'var(--pamper2)', values: stats.map(s => s.vuil) }], { label: 'Pampers per dag', min: 6 }),
-      [['var(--pamper)', 'nat'], ['var(--pamper2)', 'vuil']],
-      table([{ h: 'Dag' }, { h: 'Pampers', num: true }, { h: 'Nat', num: true }, { h: 'Vuil', num: true }, { h: 'Kleur stoelgang' }],
-        dayRows(s => { const kl = [...new Set(events.filter(e => e.day === s.key && e.type === 'pamper' && e.kleur).map(e => e.kleur))]; return [dl(s.key), s.pampers, s.nat, s.vuil, kl.join(', ') || '–']; }))));
+    const kleurDots = (kleuren) => {
+      const w = el('span', 'dots');
+      const cnt = {}; kleuren.forEach(k => cnt[k] = (cnt[k] || 0) + 1);
+      for (const k of ['oranje', 'geel', 'groen', 'bruin', 'zwart']) { for (let i = 0; i < (cnt[k] || 0); i++) w.appendChild(el('i', 'dot ' + k)); }
+      if (!kleuren.length) w.textContent = '–';
+      return w;
+    };
+    const pc = card('Pampers per dag', 'Elke pamper telt één keer. Stoelgangkleur per vuile pamper als stip.',
+      barChart(days, [
+        { color: 'var(--pamper)', values: stats.map(s => s.alleenNat) },
+        { color: 'var(--pamper2)', values: stats.map(s => s.beide) },
+        { color: 'var(--voeding)', values: stats.map(s => s.alleenVuil) },
+        { color: 'var(--line)', values: stats.map(s => s.droog) }], { label: 'Pampers per dag', min: 6 }),
+      [['var(--pamper)', 'alleen nat'], ['var(--pamper2)', 'nat + vuil'], ['var(--voeding)', 'alleen vuil'], ['var(--line)', 'droog']],
+      table([{ h: 'Dag' }, { h: 'Totaal', num: true }, { h: 'Nat', num: true }, { h: 'Nat+vuil', num: true }, { h: 'Vuil', num: true }, { h: 'Stoelgang', cls: 'dotcell' }],
+        dayRows(s => [dl(s.key), s.pampers, s.alleenNat || '–', s.beide || '–', s.alleenVuil || '–', kleurDots(s.kleuren)])));
+    const kl = el('div', 'legend'); [['oranje', 'oranje'], ['geel', 'geel'], ['groen', 'groen'], ['bruin', 'bruin'], ['zwart', 'zwart']].forEach(([k, t]) => { const sp = el('span'); sp.append(el('i', 'dot ' + k), t); kl.appendChild(sp); });
+    pc.appendChild(kl);
+    v.appendChild(pc);
 
     // Slaap
     const slaapCard = card('Slaap per dag', 'Totale slaap, geteld bij de dag waarop het dutje begon.',
