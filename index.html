@@ -213,8 +213,8 @@
   .startgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .start { border: 2px solid var(--line); border-radius: 16px; padding: 16px 10px; display: grid; gap: 4px; justify-items: center; font-weight: 700; font-size: 17px; }
   .start small { font-size: 12px; color: var(--muted); font-weight: 600; }
-  .start.suggest { border-color: var(--voeding); background: var(--voeding-soft); color: var(--voeding); }
-  .start.suggest small { color: var(--voeding); }
+  .start.suggest { border-color: var(--meta); background: var(--meta-soft); color: var(--meta); }
+  .start.suggest small { color: var(--meta); }
   .linkbtn { color: var(--accent); font-weight: 700; font-size: 14px; text-decoration: underline; justify-self: start; }
   .prevfeed { background: var(--voeding-soft); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; font-size: 14px; }
   .prevfeed b { color: var(--voeding); }
@@ -388,7 +388,7 @@
 
   <section id="view-overzicht" hidden style="display:grid;gap:14px"></section>
 
-  <p class="note" id="hint">Tik op een regel in het logboek om ze te bewerken. De volgende voeding begin je met de borst waar de vorige eindigde; dat staat bovenaan bij de aftelling. De gegevens staan in jullie eigen GitHub-repo en worden om de halve minuut ververst. Een echt alarm op een vergrendelde telefoon kan een webpagina niet zetten; zet daarvoor je wekker op de aangegeven tijd.</p>
+  <p class="note" id="hint">Tik op een regel in het logboek om ze te bewerken. De volgende voeding begin je met de andere borst dan de vorige keer; dat staat bovenaan bij de aftelling. De gegevens staan in jullie eigen GitHub-repo en worden om de halve minuut ververst. Een echt alarm op een vergrendelde telefoon kan een webpagina niet zetten; zet daarvoor je wekker op de aangegeven tijd.</p>
 </div>
 
 <div id="scrim" class="scrim" hidden></div>
@@ -484,8 +484,8 @@
     return s;
   }
   function lastSideUsed(e) { if (!e) return null; if (e.lastSide) return e.lastSide; if (e.side === 'beide') return 'R'; return e.side || null; }
-  // Volgende voeding begint met de borst waarmee de vorige eindigde.
-  function suggestedSide() { return lastSideUsed(lastBreastFeed()); }
+  // Afwisselen: de volgende voeding begint met de andere borst dan de laatst gebruikte.
+  function suggestedSide() { const ls = lastSideUsed(lastBreastFeed()); return ls ? (ls === 'L' ? 'R' : 'L') : null; }
   function feedMinutes(e, now) { return e.l != null || e.r != null ? (sideSeconds(e, 'L', now) + sideSeconds(e, 'R', now)) / 60 : (Number(e.ml) || 0); }
   function prevWeight(e) { return events.filter(x => x.type === 'gewicht' && x.ts < e.ts).sort((a, b) => a.ts < b.ts ? 1 : -1)[0]; }
 
@@ -917,7 +917,7 @@
     await guarded(async () => {
       const now = new Date();
       const patch = { l: Math.round(sideSeconds(f, 'L', now.getTime())), r: Math.round(sideSeconds(f, 'R', now.getTime())), running: null, runSince: null, end: now.toISOString() };
-      try { await store.update(f.id, patch); toast('Voeding opgeslagen' + (f.lastSide ? ' · volgende keer beginnen met ' + SIDE[f.lastSide] : '')); }
+      try { await store.update(f.id, patch); toast('Voeding opgeslagen' + (f.lastSide ? ' · volgende keer beginnen met ' + SIDE[f.lastSide === 'L' ? 'R' : 'L'] : '')); }
       catch (err) { writeFailed(err, 'Opslaan mislukt'); }
     });
   }
@@ -1028,7 +1028,7 @@
             detail.appendChild(field('Links (minuten)', numInput(openSheet.lMin, 1, v => openSheet.lMin = v, 'f-lmin')));
             detail.appendChild(field('Rechts (minuten)', numInput(openSheet.rMin, 1, v => openSheet.rMin = v, 'f-rmin')));
             detail.appendChild(field('Begonnen met', seg([['L','Links'],['R','Rechts']], openSheet.firstSide, v => openSheet.firstSide = v)));
-            detail.appendChild(field('Geëindigd met (bepaalt de volgende startborst)', seg([['L','Links'],['R','Rechts']], openSheet.lastSide, v => openSheet.lastSide = v)));
+            detail.appendChild(field('Geëindigd met (de volgende voeding start met de andere)', seg([['L','Links'],['R','Rechts']], openSheet.lastSide, v => openSheet.lastSide = v)));
             $('sheet-save').hidden = false;
           } else if (!openSheet.manual) {
             const sug = suggestedSide();
@@ -1040,13 +1040,13 @@
               const pv = el('div', 'prevfeed');
               pv.appendChild(el('span', 'label', 'Vorige borstvoeding'));
               pv.appendChild(el('div', '', parts.join(' · ')));
-              if (ls) pv.appendChild(el('b', '', 'Laatst gebruikt: ' + SIDE[ls] + ' → nu starten met ' + SIDE[ls]));
+              if (ls) pv.appendChild(el('b', '', 'Laatst gebruikt: ' + SIDE[ls] + ' → nu starten met ' + SIDE[sug]));
               detail.appendChild(pv);
             }
             const grid = el('div', 'startgrid');
             for (const s of ['L', 'R']) {
               const b = el('button', 'start' + (sug === s ? ' suggest' : '')); b.type = 'button';
-              b.innerHTML = '<span>Start ' + SIDE[s] + '</span><small>' + (sug === s ? 'laatst gebruikt · aan de beurt' : (sug ? 'de andere' : '')) + '</small>';
+              b.innerHTML = '<span>Start ' + SIDE[s] + '</span><small>' + (sug === s ? 'aan de beurt' : (sug ? 'laatst gebruikt' : '')) + '</small>';
               b.addEventListener('click', () => startFeed(s));
               grid.appendChild(b);
             }
@@ -1055,7 +1055,7 @@
             m.addEventListener('click', () => { openSheet.manual = true; renderDetail(); });
             detail.appendChild(m); $('sheet-save').hidden = true;
           } else {
-            detail.appendChild(field('Geëindigd met (bepaalt de volgende startborst)', seg([['L','Links'],['R','Rechts']], openSheet.side === 'beide' ? 'R' : openSheet.side, v => openSheet.side = v)));
+            detail.appendChild(field('Geëindigd met (de volgende voeding start met de andere)', seg([['L','Links'],['R','Rechts']], openSheet.side === 'beide' ? 'R' : openSheet.side, v => openSheet.side = v)));
             detail.appendChild(field('Duur (minuten, optioneel)', numInput(openSheet.ml || 0, 5, v => openSheet.ml = v)));
             if (!ed) { const m = el('button', 'linkbtn', 'Terug naar de timer'); m.type = 'button'; m.addEventListener('click', () => { openSheet.manual = false; renderDetail(); }); detail.appendChild(m); }
             $('sheet-save').hidden = false;
