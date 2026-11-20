@@ -282,6 +282,30 @@
 
   <div id="banner" hidden></div>
 
+  <section class="card setup" id="gsetup" hidden>
+    <h3 id="g-title">Welkom</h3>
+    <div id="g-nolink" hidden>
+      <p class="muted" style="margin:0;font-size:14px">Open dit logboek via de deellink die je kreeg. Zonder link kan de app nergens bewaren.</p>
+      <details>
+        <summary style="font-weight:700;cursor:pointer">Beheerder: deellink maken</summary>
+        <div style="display:grid;gap:12px;margin-top:12px">
+          <div class="field"><span class="label">GitHub-gebruiker</span><input type="text" id="g-owner" autocapitalize="off"></div>
+          <div class="field"><span class="label">Gasten-repo (privé)</span><input type="text" id="g-repo" autocapitalize="off" placeholder="bv. baby-logboek-gasten"></div>
+          <div class="field"><span class="label">Token (alleen voor die repo)</span><input type="password" id="g-token" autocapitalize="off" placeholder="github_pat_…"></div>
+          <div class="actions" style="grid-template-columns:1fr"><button class="save" id="g-make" type="button">Maak deellink</button></div>
+          <div class="field" id="g-linkbox" hidden><span class="label">Deellink (tik om te kopiëren)</span><input type="text" id="g-link" readonly></div>
+        </div>
+      </details>
+    </div>
+    <div id="g-names" hidden style="display:grid;gap:12px">
+      <p class="muted" style="margin:0;font-size:14px">Vul de naam van je baby en je eigen naam in. Gebruik op de telefoon van je partner dezelfde link en exact dezelfde babynaam om samen te loggen.</p>
+      <div class="field"><span class="label">Naam van de baby</span><input type="text" id="g-baby" maxlength="30"></div>
+      <div class="field"><span class="label">Jouw naam (staat bij wat je logt)</span><input type="text" id="g-name" maxlength="30"></div>
+      <div class="actions"><button class="cancel" id="g-cancel" type="button" hidden>Annuleer</button><button class="save" id="g-save" type="button">Start</button></div>
+    </div>
+    <div class="err" id="g-err" hidden></div>
+  </section>
+
   <section class="card setup" id="setup" hidden>
     <h3>Koppel je GitHub-repo</h3>
     <p class="muted" style="margin:0;font-size:14px">Het logboek bewaart alles als JSON-bestandjes in een privé-repo van jezelf. Eén keer instellen per telefoon.</p>
@@ -445,6 +469,7 @@
   let settings = { intervalMin: 180, sound: true, birthDate: '', birthWeight: 0, tempTimes: [], vitTime: '09:00', vitNaam: 'Vitamine D', sleep: false, bathDays: 7 };
   let routineChimed = {};
   let viewDay = dayKey(new Date());
+  const GUEST = false;
   let tab = location.hash === '#overzicht' ? 'overzicht' : 'log';
   let loaded = false, loadTimer = null;
   let openSheet = null;
@@ -1183,7 +1208,7 @@
     const lab = el('label', 'check'); const cb = el('input'); cb.type = 'checkbox'; cb.id = 'f-sound'; cb.checked = sound; cb.addEventListener('change', () => sound = cb.checked);
     lab.append(cb, document.createTextNode('Belletje laten horen als de pagina open staat')); fields.appendChild(lab);
     fields.appendChild(el('p', 'note', 'Een webpagina kan geen alarm op een vergrendelde telefoon laten afgaan. De aftelling bovenaan toont het tijdstip; zet daar zelf een wekker op als je zeker wil zijn.'));
-    const gl = el('button', 'linkbtn', 'GitHub-koppeling of naam aanpassen'); gl.type = 'button'; gl.addEventListener('click', () => { close(); showSetup(true); }); fields.appendChild(gl);
+    const gl = el('button', 'linkbtn', GUEST ? 'Babynaam of mijn naam aanpassen' : 'GitHub-koppeling of naam aanpassen'); gl.type = 'button'; gl.addEventListener('click', () => { close(); if (GUEST) showGuestSetup(true); else showSetup(true); }); fields.appendChild(gl);
     $('time-field').hidden = true; $('note-field').hidden = true; $('sheet-err').hidden = true;
     $('sheet-save').hidden = false; $('sheet-save').disabled = false; $('sheet-save').textContent = 'Bewaar';
     openSheet.save = async () => {
@@ -1222,10 +1247,10 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openSheet) close(); });
   $('prev').addEventListener('click', () => { viewDay = addDays(viewDay, -1); render(); });
   $('next').addEventListener('click', () => { viewDay = addDays(viewDay, 1); render(); });
-  const setTab = (t) => { tab = t; if (t === 'overzicht') { if (location.hash !== '#overzicht') location.hash = 'overzicht'; } else if (location.hash) history.replaceState(null, '', location.pathname + location.search); render(); };
+  const setTab = (t) => { tab = t; if (GUEST) { render(); return; } if (t === 'overzicht') { if (location.hash !== '#overzicht') location.hash = 'overzicht'; } else if (location.hash) history.replaceState(null, '', location.pathname + location.search); render(); };
   $('tab-log').addEventListener('click', () => setTab('log'));
   $('tab-overzicht').addEventListener('click', () => setTab('overzicht'));
-  window.addEventListener('hashchange', () => { const t = location.hash === '#overzicht' ? 'overzicht' : 'log'; if (t !== tab) { tab = t; render(); } });
+  window.addEventListener('hashchange', () => { if (GUEST) return; const t = location.hash === '#overzicht' ? 'overzicht' : 'log'; if (t !== tab) { tab = t; render(); } });
   setInterval(() => { if (events.length) renderLive(); }, 1000);
   setInterval(() => { if (events.length) render(); }, 60000);
 
@@ -1236,7 +1261,9 @@
   }
 
   /* ---------- GitHub-store: JSON-bestanden in een privé-repo ---------- */
-  const CFG_KEY = 'babylog-config';
+  const CFG_KEY = GUEST ? 'babylog-gast-config' : 'babylog-config';
+  const slug = (n) => n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const possessive = (n) => /[sxz]$/i.test(n) ? n + '’' : /[aiouyé]$/i.test(n) ? n + '’s' : n + 's';
   function loadConfig() { try { return JSON.parse(localStorage.getItem(CFG_KEY) || 'null'); } catch (e) { return null; } }
   function saveConfig(c) { try { localStorage.setItem(CFG_KEY, JSON.stringify(c)); } catch (e) {} }
   const b64enc = (s) => btoa(unescape(encodeURIComponent(s)));
@@ -1245,7 +1272,7 @@
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
   function makeStore(cfg) {
-    const base = 'https://api.github.com/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo) + '/contents/';
+    const base = 'https://api.github.com/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo) + '/contents/' + (cfg.baby ? 'babies/' + slug(cfg.baby) + '/' : '');
     const files = {};  // path -> {sha, data}
     const listeners = [];
     const headers = () => ({ 'Authorization': 'Bearer ' + cfg.token, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' });
@@ -1327,9 +1354,61 @@
     } catch (e) { $('c-save').disabled = false; err(e.code === 'auth' ? 'GitHub weigert: ' + e.message + '. Klopt het token en heeft het toegang tot deze repo?' : 'Koppelen mislukt: ' + e.message); }
   });
 
+  /* ---------- gastmodus: eigen baby, eigen map in de gasten-repo ---------- */
+  const b64u = (o) => b64enc(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  function readKey() {
+    const m = location.hash.match(/^#k=([A-Za-z0-9_-]+)$/); if (!m) return null;
+    try { const o = JSON.parse(b64dec(m[1].replace(/-/g, '+').replace(/_/g, '/'))); return o && o.o && o.r && o.t ? o : null; } catch (e) { return null; }
+  }
+  const guestLink = (c, full) => location.origin + location.pathname + '#k=' + b64u(full ? { o: c.owner, r: c.repo, t: c.token, b: c.baby, n: c.name } : { o: c.owner, r: c.repo, t: c.token });
+  function showGuestSetup(editing) {
+    const c = loadConfig() || {}; const k = readKey();
+    const have = !!(k || c.token);
+    $('g-nolink').hidden = have; $('g-names').hidden = !have; $('g-err').hidden = true;
+    $('g-title').textContent = have ? 'Welkom' : 'Baby logboek';
+    $('g-baby').value = c.baby || (k && k.b) || ''; $('g-name').value = c.name || (k && k.n) || '';
+    $('g-cancel').hidden = !editing;
+    $('gsetup').hidden = false; if (editing) $('gsetup').scrollIntoView({ block: 'start' });
+  }
+  function applyGuestTitle(cfg) {
+    const t = possessive(cfg.baby) + ' logboek';
+    document.title = t; document.querySelector('h1').textContent = t;
+    const m = document.querySelector('meta[name="apple-mobile-web-app-title"]'); if (m) m.content = cfg.baby;
+    try { history.replaceState(null, '', guestLink(cfg, true)); } catch (e) {}
+  }
+  $('g-cancel').addEventListener('click', () => { $('gsetup').hidden = true; });
+  $('g-save').addEventListener('click', async () => {
+    const old = loadConfig() || {}; const k = readKey() || {};
+    const c = { owner: k.o || old.owner, repo: k.r || old.repo, token: k.t || old.token, baby: $('g-baby').value.trim(), name: $('g-name').value.trim() };
+    const err = (m) => { $('g-err').textContent = m; $('g-err').hidden = false; };
+    if (!c.baby || !slug(c.baby) || !c.name) return err('Vul beide namen in.');
+    $('g-save').disabled = true;
+    try { await makeStore(c).load(); saveConfig(c); $('gsetup').hidden = true; $('g-save').disabled = false; boot(); }
+    catch (e) { $('g-save').disabled = false; err(e.code === 'auth' ? 'Deze deellink werkt niet (meer). Vraag een nieuwe.' : 'Starten mislukt: ' + e.message); }
+  });
+  $('g-make').addEventListener('click', async () => {
+    const c = { owner: $('g-owner').value.trim(), repo: $('g-repo').value.trim(), token: $('g-token').value.trim() };
+    const err = (m) => { $('g-err').textContent = m; $('g-err').hidden = false; };
+    $('g-err').hidden = true;
+    if (!c.owner || !c.repo || !c.token) return err('Vul de drie velden in.');
+    try {
+      const r = await fetch('https://api.github.com/repos/' + encodeURIComponent(c.owner) + '/' + encodeURIComponent(c.repo), { headers: { 'Authorization': 'Bearer ' + c.token, 'Accept': 'application/vnd.github+json' } });
+      if (!r.ok) return err('GitHub geeft ' + r.status + '. Klopt de repo en heeft het token er toegang toe?');
+      const j = await r.json(); if (!j.private) return err('Deze repo is publiek. Maak ze privé voor je een link deelt.');
+    } catch (e) { return err('Controleren mislukt: ' + e.message); }
+    $('g-link').value = guestLink(c, false); $('g-linkbox').hidden = false;
+  });
+  $('g-link').addEventListener('click', async () => { $('g-link').select(); try { await navigator.clipboard.writeText($('g-link').value); toast('Deellink gekopieerd'); } catch (e) {} });
+
   let pollTimer = null;
   async function boot() {
-    const cfg = loadConfig();
+    let cfg = loadConfig();
+    if (GUEST) {
+      const k = readKey();
+      if (k && k.b && k.n && (!cfg || cfg.token !== k.t || cfg.baby !== k.b || cfg.name !== k.n)) { cfg = { owner: k.o, repo: k.r, token: k.t, baby: k.b, name: k.n }; saveConfig(cfg); }
+      if (!cfg || !cfg.baby || (k && k.t !== cfg.token)) { loaded = true; setWritable(false); banner(''); showGuestSetup(false); render(); return; }
+      applyGuestTitle(cfg);
+    }
     if (!cfg) { loaded = true; setWritable(false); banner(''); $('setup').hidden = false; render(); return; }
     myId = cfg.name; $('who').textContent = 'Ingelogd als ' + cfg.name;
     store = makeStore(cfg);

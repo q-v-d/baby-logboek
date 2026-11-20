@@ -41,3 +41,9 @@ Eén bestand per maand, `data/JJJJ-MM.json`:
 - `l` en `r` zijn seconden per borst. `lastSide` bepaalt met welke borst de volgende voeding start.
 
 Elke wijziging is een commit in de data-repo, dus de geschiedenis is altijd terug te vinden. De app ververst om de 30 seconden en bij het openen van het scherm; twee telefoons die tegelijk schrijven worden samengevoegd (de API weigert een verouderde versie, de app leest opnieuw en probeert opnieuw).
+
+## Gastversie voor vrienden
+
+`gast/index.html` is dezelfde app met een neutrale naam en icoon (gemaakt door `python3 tools/build_gast.py`; opnieuw draaien na elke wijziging aan `index.html`). Ze schrijft naar een **aparte privé-repo** met een **apart token**, in een map per baby: `babies/<babynaam>/data/JJJJ-MM.json` en `babies/<babynaam>/settings.json`.
+
+De beheerder maakt op `…/baby-logboek/gast/` onder "Beheerder: deellink maken" een link waarin repo en token zitten. Wie de link opent, vult enkel de babynaam en zijn eigen naam in. Het token van de gasten-repo geeft geen toegang tot `baby-logboek-data`.
